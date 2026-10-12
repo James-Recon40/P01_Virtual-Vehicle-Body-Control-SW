@@ -53,7 +53,7 @@ main
 | `develop` (통합·테스트) | 장태윤 (팀장), 이상현 | James-Recon40, charles000303-sketch | `tests/`, 루트 파일 |
 | `feature/docs` | 장태윤 | James-Recon40 | `docs/`, `tests/test_cases/` |
 | `feature/common` | 장태윤 | James-Recon40 | `src/common/` |
-| `feature/vehicle-controller` | 김원 | rladnjs210-sys | `src/vehicle_controller/` |
+| `feature/vehicle-controller` | 장태윤 | James-Recon40 | `src/vehicle_controller/` |
 | `feature/door-lock-cluster` | 김원 | rladnjs210-sys | `src/door_lock_cluster/` |
 | `feature/wiper` | 최희선 | hseonchoi | `src/wiper/` |
 | `feature/lighting` | 최희선 | hseonchoi | `src/lighting/` |
