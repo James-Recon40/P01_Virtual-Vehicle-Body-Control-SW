@@ -8,6 +8,7 @@
 - `docs/02_architecture/` SW 아키텍처 설계서
 - `docs/03_interface/` 인터페이스 정의서 (신호 이름·자료형·공개 함수의 기준)
 - `docs/04_detailed_design/` SW 상세설계서 (함수 원형·처리 순서·내부 변수의 기준)
+  - 엑셀(.xlsx) 대신 같은 내용의 `04_SW_상세설계서_VBC_v1.1.md`를 읽는다. 함수별 내용은 `## SW 상세설계 - 함수명()` 제목 아래에 있다.
 - `tests/test_cases/` 블랙박스 테스트케이스
 
 ## 구조
