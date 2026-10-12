@@ -46,6 +46,19 @@ main
 4. `develop` 기준으로 블랙박스 테스트를 진행합니다.
 5. 최종 완료되면 `develop`을 `main`으로 병합합니다.
 
+## Team
+
+| 브랜치 | 담당자 | GitHub | 작업 폴더 |
+|---|---|---|---|
+| `develop` (통합·테스트) | 장태윤 (팀장), 이상현 | James-Recon40, charles000303-sketch | `tests/`, 루트 파일 |
+| `feature/docs` | 장태윤 | James-Recon40 | `docs/`, `tests/test_cases/` |
+| `feature/common` | 장태윤 | James-Recon40 | `src/common/` |
+| `feature/vehicle-controller` | 김원 | rladnjs210-sys | `src/vehicle_controller/` |
+| `feature/door-lock-cluster` | 김원 | rladnjs210-sys | `src/door_lock_cluster/` |
+| `feature/wiper` | 최희선 | hseonchoi | `src/wiper/` |
+| `feature/lighting` | 최희선 | hseonchoi | `src/lighting/` |
+| `feature/ui` | 설선환 | seol852323-code | `web/` |
+
 ## Directory Structure
 
 ```
