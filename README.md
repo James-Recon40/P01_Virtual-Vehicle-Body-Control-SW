@@ -40,7 +40,35 @@ main
 
 ### Workflow
 
-1. 각 `feature/*` 브랜치는 `develop`에서 분기합니다.
-2. 기능 담당자가 각 브랜치에서 구현한 뒤 `develop`으로 병합합니다.
-3. `develop`에서 통합 테스트를 진행합니다.
-4. 최종 완료되면 `develop`을 `main`으로 병합합니다.
+1. `feature/docs`에서 설계 문서를 작성하고 `develop`으로 병합합니다.
+2. 각 기능 브랜치는 `develop`을 받아 설계 문서를 기준으로 구현합니다.
+3. 구현이 끝나면 `develop`으로 병합해 최종 통합합니다.
+4. `develop` 기준으로 블랙박스 테스트를 진행합니다.
+5. 최종 완료되면 `develop`을 `main`으로 병합합니다.
+
+## Directory Structure
+
+```
+AI.M_Project/
+├── docs/                         ◀ feature/docs
+│   ├── 01_requirements/          #   요구사항 분석
+│   ├── 02_architecture/          #   SW 아키텍처 설계
+│   ├── 03_interface/             #   인터페이스 정의서
+│   └── 04_detailed_design/       #   SW 상세설계
+│
+├── src/
+│   ├── vehicle_controller/       ◀ feature/vehicle-controller
+│   ├── common/                   ◀ feature/common
+│   ├── wiper/                    ◀ feature/wiper
+│   ├── lighting/                 ◀ feature/lighting
+│   └── door_lock_cluster/        ◀ feature/door-lock-cluster
+│
+├── web/                          ◀ feature/ui
+│
+└── tests/                        ◀ develop (통합 후 블랙박스 테스트)
+    ├── test_cases/               #   블랙박스 테스트 케이스 (요구사항 기반)
+    └── results/                  #   테스트 실행 결과, 증거(로그·캡처)
+```
+
+- 각 브랜치에서는 담당 폴더만 수정합니다.
+- 빈 폴더 유지를 위한 `.gitkeep` 파일은 실제 파일을 추가한 뒤 삭제해도 됩니다.
