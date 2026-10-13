@@ -192,6 +192,8 @@ h2 small, .sub, .hint { color: var(--muted); font-weight: 400; font-size: 12px; 
   font-variant-numeric: tabular-nums;
 }
 .chips button.out { color: var(--bad); }
+.chips button.blocked { color: var(--muted); text-decoration: line-through; cursor: not-allowed; }
+.range-row input[type=range]:disabled { cursor: not-allowed; opacity: .5; }
 .chips button:hover { border-color: var(--accent); }
 
 .doors { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
@@ -223,6 +225,7 @@ h2 small, .sub, .hint { color: var(--muted); font-weight: 400; font-size: 12px; 
 .tc-run { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 10px 12px; background: var(--chip); border-radius: 8px; }
 .tc-run .msg { color: var(--muted); font-size: 13px; }
 .tc-run .msg.done { color: var(--ok); font-weight: 600; }
+.tc-run .msg.fail { color: var(--bad); font-weight: 600; }
 
 /* ---- 로그 ---- */
 .log-wrap { max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
@@ -236,3 +239,13 @@ h2 small, .sub, .hint { color: var(--muted); font-weight: 400; font-size: 12px; 
 .log tr.k-in td:nth-child(3) { color: var(--warn); }
 .log tr.k-sys td { color: var(--muted); }
 .log tr.k-mark td { background: var(--chip); font-weight: 600; }
+.log tr.k-valid td { font-weight: 600; }
+.log tr.k-valid td:nth-child(3) { color: var(--accent); }
+.log tr.k-obs td { font-weight: 600; }
+.log tr.k-obs td:nth-child(3) { color: var(--ok); }
+
+/* 현실 주행: 막힌 조작, 안내 문구, 속도 상태 */
+.seg button.blocked { color: var(--muted); text-decoration: line-through; cursor: not-allowed; }
+.drive-msg { color: var(--warn); font-size: 13px; font-weight: 600; min-height: 0; }
+.drive-msg.show { padding: 6px 0 2px; }
+.drive-status { color: var(--muted); font-size: 12px; margin-top: 4px; }

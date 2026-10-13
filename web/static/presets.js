@@ -1,9 +1,10 @@
 /*
- * presets.js - TC 사전조건 프리셋 (05 BlackBox TestCase v1.3 '사전조건' 열 기준)
+ * presets.js - TC 사전조건 프리셋 (05 BlackBox TestCase v1.4 '사전조건' 열 기준)
  *
  * 프리셋 실행 순서 (app.js runPreset):
  *   1) reset: VehicleController_Init() 재호출, 시각 0 (이전 시험의 타이머·상태를 지움)
- *   2) stopAll이면 주기 신호 5개 모두 송신 중단 (03 개요 B8 시험 옵션), 아니면 5개 모두 송신
+ *   2) stopAll이면 주기 신호 5개 모두 송신 중단 (03 개요 B8 시험 옵션) + 이벤트 신호 6개를 초기값으로 되돌림,
+ *      아니면 5개 모두 송신. 그 뒤 이벤트 신호 6개를 1회 송신 (B9)
  *   3) steps를 차례로 실행
  *        { set: {신호: 값, ...} }  UI 컨트롤 값 변경 (주기 신호는 다음 100 ms 송신부터, 이벤트 신호는 즉시 송신)
  *        { stop: [신호, ...] }     해당 주기 신호 송신 중단
@@ -99,11 +100,17 @@
     { set: { gear_position: "D" } }, { wait: SETTLE }],
     note: "기어 P에서 D로 변경 → 도어 잠금 풀림" };
   P["TC-D3-02"] = P["TC-D1-01"];
-  P["TC-D4-01"] = P["TC-D1-01"];
+  // D4-01·D5-01·D5-02: 05 v1.4 사전조건 10 km/h (15 km/h 이상이면 잠김 D3)
+  P["TC-D4-01"] = { steps: [{ set: base({ vehicle_speed_kph: 10, gear_position: "D" }) }, { wait: SETTLE }],
+    note: "10 km/h → 도어 잠금 풀림 (문을 열 수 있음)" };
   P["TC-D4-02"] = { steps: [{ set: base({ vehicle_speed_kph: 1, gear_position: "D", door_fl_open: true }) },
     { wait: SETTLE }] };
-  P["TC-D5-01"] = P["TC-D1-01"];
-  P["TC-D5-02"] = P["TC-D1-01"];
+  P["TC-D5-01"] = P["TC-D4-01"];
+  P["TC-D5-02"] = P["TC-D4-01"];
 
   window.VBC_PRESETS = P;
+
+  // 마지막 수신 시각으로 판정하는 TC (미수신 0.5초 C2·C4). 이 TC에서만 '송신 중단' 기록 옆에 마지막 수신 시각을 적는다
+  window.VBC_RX_LOG_TCS = ["TC-C1-02", "TC-C2-01", "TC-C3-01", "TC-C3-02", "TC-C4-01", "TC-C4-02", "TC-C5-01",
+    "TC-C5-02", "TC-L1-02", "TC-W5-01", "TC-D1-01", "TC-D1-02", "TC-D5-01", "TC-D5-02"];
 })();
