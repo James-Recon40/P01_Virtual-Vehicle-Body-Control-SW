@@ -1,0 +1,35 @@
+﻿time_ms,t0_rel_ms,kind,detail
+,,시스템,연결됨
+,,입력,"이벤트 신호 6개 1회 송신(연결) {""door_fl_open"":false,""door_fr_open"":false,""door_rl_open"":false,""door_rr_open"":false,""light_switch"":""OFF"",""wiper_switch"":""OFF""}"
+5200,,출력,"headlamp_on=false, wiper_level=STOP, door_locked=false, cluster_warning=NONE, ambient_light_sensor_fault=false, rain_sensor_fault=false, vehicle_speed_valid=true, vehicle_state_timeout=false"
+10250,,시스템,TC-C2-02 사전조건 적용 시작
+10250,,시스템,새로 시작 요청 (TC-C2-02 사전조건)
+0,,시스템,"VehicleController_Init() 완료, time_ms = 0부터 다시 시작"
+0,,입력,"이벤트 신호 6개 1회 송신(새로 시작) {""door_fl_open"":false,""door_fr_open"":false,""door_rl_open"":false,""door_rr_open"":false,""light_switch"":""OFF"",""wiper_switch"":""OFF""}"
+0,,입력,시동 = 켜짐 (다음 주기 송신부터)
+0,,입력,속도 = 50 (다음 주기 송신부터)
+0,,입력,기어 = D (다음 주기 송신부터)
+0,,입력,조도 = 500 (다음 주기 송신부터)
+0,,입력,강우량 = 50 (다음 주기 송신부터)
+0,,입력,"이벤트 {""light_switch"":""AUTO""}"
+0,,입력,"이벤트 {""wiper_switch"":""AUTO""}"
+0,,출력,"headlamp_on=false, wiper_level=LOW, door_locked=true, cluster_warning=NONE, ambient_light_sensor_fault=false, rain_sensor_fault=false, vehicle_speed_valid=true, vehicle_state_timeout=false"
+1000,,출력,headlamp_on: false → true
+1300,,시스템,TC-C2-02 사전조건 적용 완료
+3150,,시스템,TC-C2-02 자동 실행 시작 (판정은 05 문서 '예상 결과'와 비교해 시험자가 함)
+3150,,시스템,TC-C2-02 1) 강우량 120% 입력 2) 확인
+3150,,입력,강우량 = 120 (다음 주기 송신부터)
+3150,,입력,"자동 실행 즉시 송신 {""rain_level_pct"":120}"
+3200,,출력,"wiper_level: LOW → INT, cluster_warning: NONE → RAIN_SENSOR, rain_sensor_fault: false → true"
+3200,,측정,TC-C2-02 강우량 = 120 수신 (time_ms 3200)
+3200,0,기준,t=0 기준 시각 표시 (time_ms 3200) - 강우량 120% 수신 (t=0초)
+3200,0,측정,"TC-C2-02 120% 수신 Step (time_ms 3200, t=0.00초): 강우 센서 고장 표시 고장, 와이퍼 간헐, 계기판 경고 강우 센서 고장"
+3250,50,측정,"TC-C2-02 120% 수신 + 50 ms (time_ms 3250, t=0.05초): 강우 센서 고장 표시 고장, 와이퍼 간헐, 계기판 경고 강우 센서 고장"
+4200,1000,시스템,TC-C2-02 3) 강우량 50% 입력 4) 다시 확인
+4200,1000,입력,강우량 = 50 (다음 주기 송신부터)
+4200,1000,입력,"자동 실행 즉시 송신 {""rain_level_pct"":50}"
+4250,1050,출력,"wiper_level: INT → LOW, cluster_warning: RAIN_SENSOR → NONE, rain_sensor_fault: true → false"
+4250,1050,측정,"TC-C2-02 강우량 = 50 수신 (time_ms 4250, t=1.05초)"
+4250,1050,측정,"TC-C2-02 50% 수신 Step (time_ms 4250, t=1.05초): 강우 센서 고장 표시 정상, 와이퍼 저속, 계기판 경고 없음"
+4300,1100,측정,"TC-C2-02 50% 수신 + 50 ms (time_ms 4300, t=1.10초): 강우 센서 고장 표시 정상, 와이퍼 저속, 계기판 경고 없음"
+4300,1100,시스템,TC-C2-02 자동 실행 완료

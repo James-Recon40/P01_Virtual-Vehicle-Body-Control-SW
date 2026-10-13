@@ -1,0 +1,13 @@
+﻿time_ms,t0_rel_ms,kind,detail
+74300,,시스템,TC-D1-02 사전조건 적용 시작
+74300,,시스템,새로 시작 요청 (TC-D1-02 사전조건)
+0,,시스템,"VehicleController_Init() 완료, time_ms = 0부터 다시 시작"
+0,,입력,시동 송신 재개
+0,,입력,"이벤트 신호 6개 1회 송신(새로 시작) {""door_fl_open"":false,""door_fr_open"":false,""door_rl_open"":false,""door_rr_open"":false,""light_switch"":""OFF"",""wiper_switch"":""OFF""}"
+0,,출력,"headlamp_on=false, wiper_level=STOP, door_locked=false, cluster_warning=NONE, ambient_light_sensor_fault=false, rain_sensor_fault=false, vehicle_speed_valid=false, vehicle_state_timeout=false"
+50,,출력,"door_locked: false → true, vehicle_speed_valid: false → true"
+50,,유효 속도,유효한 속도: 무효 → 유효 (속도 20 km/h)
+300,,시스템,TC-D1-02 사전조건 적용 완료
+16250,,입력,기어 송신 중단 · 마지막 수신 time_ms 16250 (미수신 0.5초 판정 시각 16750)
+16750,,출력,"vehicle_speed_valid: true → false, vehicle_state_timeout: false → true"
+16750,,유효 속도,유효한 속도: 유효 → 무효 (이유: 기어 미수신 500 ms (마지막 수신 16250))
