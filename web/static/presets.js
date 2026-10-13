@@ -1,9 +1,10 @@
 /*
- * presets.js - TC 사전조건 프리셋 (05 BlackBox TestCase v1.3 '사전조건' 열 기준)
+ * presets.js - TC 사전조건 프리셋 (05 BlackBox TestCase v1.4 '사전조건' 열 기준)
  *
  * 프리셋 실행 순서 (app.js runPreset):
  *   1) reset: VehicleController_Init() 재호출, 시각 0 (이전 시험의 타이머·상태를 지움)
- *   2) stopAll이면 주기 신호 5개 모두 송신 중단 (03 개요 B8 시험 옵션), 아니면 5개 모두 송신
+ *   2) stopAll이면 주기 신호 5개 모두 송신 중단 (03 개요 B8 시험 옵션) + 이벤트 신호 6개를 초기값으로 되돌림,
+ *      아니면 5개 모두 송신. 그 뒤 이벤트 신호 6개를 1회 송신 (B9)
  *   3) steps를 차례로 실행
  *        { set: {신호: 값, ...} }  UI 컨트롤 값 변경 (주기 신호는 다음 100 ms 송신부터, 이벤트 신호는 즉시 송신)
  *        { stop: [신호, ...] }     해당 주기 신호 송신 중단
@@ -36,7 +37,7 @@
   P["TC-C1-01"] = { steps: [{ set: base({}) }, { wait: 3000 + SETTLE }],
     note: "조도 5000 lux 3초 이상 유지" };
   P["TC-C1-02"] = { steps: [{ set: base({ light_switch: "AUTO" }) }, { wait: 3000 + SETTLE }],
-    note: "조도 5000 lux 3초 이상 유지 → 전조등 꺼짐(L3). 적용 후 '수신 시간 기록'이 켜집니다" };
+    note: "조도 5000 lux 3초 이상 유지 → 전조등 꺼짐(L3)" };
   P["TC-C2-01"] = { steps: [{ set: base({ ambient_light_lux: 1000 }) }, { wait: SETTLE }] };
   P["TC-C2-02"] = { steps: [{ set: base({ vehicle_speed_kph: 50, gear_position: "D", ambient_light_lux: 500,
     rain_level_pct: 50, light_switch: "AUTO", wiper_switch: "AUTO" }) }, { wait: 1000 + SETTLE }],
@@ -99,13 +100,13 @@
     { set: { gear_position: "D" } }, { wait: SETTLE }],
     note: "기어 P에서 D로 변경 → 도어 잠금 풀림" };
   P["TC-D3-02"] = P["TC-D1-01"];
-  // D4-01·D5-01: 팀 수정으로 10 km/h. 15 km/h 이상이면 잠겨(D3) 문을 열 수 없으므로 잠기기 전 속도에서 시험
+  // D4-01·D5-01·D5-02: 05 v1.4 사전조건 10 km/h (15 km/h 이상이면 잠김 D3)
   P["TC-D4-01"] = { steps: [{ set: base({ vehicle_speed_kph: 10, gear_position: "D" }) }, { wait: SETTLE }],
     note: "10 km/h → 도어 잠금 풀림 (문을 열 수 있음)" };
   P["TC-D4-02"] = { steps: [{ set: base({ vehicle_speed_kph: 1, gear_position: "D", door_fl_open: true }) },
     { wait: SETTLE }] };
   P["TC-D5-01"] = P["TC-D4-01"];
-  P["TC-D5-02"] = P["TC-D1-01"];
+  P["TC-D5-02"] = P["TC-D4-01"];
 
   window.VBC_PRESETS = P;
 

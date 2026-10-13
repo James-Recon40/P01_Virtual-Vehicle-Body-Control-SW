@@ -192,6 +192,8 @@ h2 small, .sub, .hint { color: var(--muted); font-weight: 400; font-size: 12px; 
   font-variant-numeric: tabular-nums;
 }
 .chips button.out { color: var(--bad); }
+.chips button.blocked { color: var(--muted); text-decoration: line-through; cursor: not-allowed; }
+.range-row input[type=range]:disabled { cursor: not-allowed; opacity: .5; }
 .chips button:hover { border-color: var(--accent); }
 
 .doors { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
@@ -240,9 +242,8 @@ h2 small, .sub, .hint { color: var(--muted); font-weight: 400; font-size: 12px; 
 .log tr.k-mark td { background: var(--chip); font-weight: 600; }
 .log tr.k-valid td { font-weight: 600; }
 .log tr.k-valid td:nth-child(3) { color: var(--accent); }
-.log tr.k-pass td, .log tr.k-fail td { font-weight: 600; }
-.log tr.k-pass td:nth-child(3) { color: var(--ok); }
-.log tr.k-fail td { color: var(--bad); }
+.log tr.k-obs td { font-weight: 600; }
+.log tr.k-obs td:nth-child(3) { color: var(--ok); }
 
 /* 현실 주행: 막힌 조작, 안내 문구, 속도 상태 */
 .seg button.blocked { color: var(--muted); text-decoration: line-through; cursor: not-allowed; }

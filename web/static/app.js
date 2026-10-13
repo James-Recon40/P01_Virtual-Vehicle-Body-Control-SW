@@ -45,7 +45,9 @@
   var markerTime = null;
   var resetWaiters = [];
   var presetRunning = false;
-  var outputWaiters = []; // 자동 시험: 조건을 만족하는 출력 메시지를 기다린다
+  var outputWaiters = []; // 자동 실행: 조건을 만족하는 출력 메시지를 기다린다
+  var outHistory = [];    // 자동 실행: 최근 출력 메시지 (이미 지나간 시점의 출력을 찾을 때)
+  var STEP_MS = 50;       // vbc_types.h MAIN_CYCLE_MS
   var stopWatch = {};      // 송신 중단한 주기 신호 → { t: 중단을 누른 time_ms, row: '송신 중단' 기록 행 }
   var noRxWarned = false;  // 서버가 rx 필드를 보내지 않음 (이전 버전) 안내 1회
 
@@ -90,6 +92,15 @@
     if (kind) log("in", kind + " " + JSON.stringify(signals));
   }
 
+  // 이벤트 신호 6개를 초기값(03 Initial Value: 스위치 OFF, 도어 닫힘)으로 되돌린다 (C4-02·C5용 새로 시작)
+  function resetEvents() {
+    inputs.light_switch = "OFF";
+    inputs.wiper_switch = "OFF";
+    inputs.door_fl_open = inputs.door_fr_open = inputs.door_rl_open = inputs.door_rr_open = false;
+    renderControls();
+    renderScene();
+  }
+
   function sendEventsOnce(reason) {
     var s = {};
     EVENTS.forEach(function (k) { s[k] = inputs[k]; });
@@ -131,6 +142,7 @@
 
   function onResetDone() {
     stopWatch = {};
+    outHistory = [];
     lastOut = null;
     lastTime = 0;
     markerTime = null;
@@ -149,6 +161,7 @@
   // - D·R(시동 켜짐): 목표 속도까지 가속·감속한다. R은 최대 REVERSE_MAX
   // - N·시동 꺼짐: 가속하지 않는다. 목표가 현재보다 낮으면 브레이크, 아니면 관성으로 천천히 감속
   // - 범위 밖 속도(-1, 251 등)는 '속도 센서 고장 주입': 실제 속도와 별개로 그 값을 그대로 보낸다 (C3 범위 판정 시험)
+  // - 시동이 꺼져 있으면 속도(슬라이더·숫자 칸·속도 버튼)를 바꿀 수 없다. 범위 밖 값(-1, 251 등 C3 고장 주입)은 예외
   // - 도어 잠금 출력이 잠김(D3)이면 닫힌 문을 열 수 없다. 열린 문은 언제든 닫을 수 있다
   // - TC 사전조건 적용은 이 규칙을 거치지 않고 값을 바로 세팅한다. 그 뒤로는 이 규칙대로 움직인다
   var DRIVE = { ACCEL: 10, BRAKE: 20, COAST: 2, REVERSE_MAX: 20, TICK_MS: 50 }; // km/h/s, ms
@@ -168,6 +181,10 @@
 
   function ignitionBlocked(on) {
     return !on && inputs.ignition_on && drive.speed > 0 ? "주행 중에는 시동을 끌 수 없습니다" : null;
+  }
+
+  function speedBlocked(v) {
+    return !inputs.ignition_on && !isOob("vehicle_speed_kph", v) ? "시동이 꺼져 있으면 속도를 바꿀 수 없습니다" : null;
   }
 
   function doorBlocked(name) {
@@ -192,6 +209,8 @@
 
   // 사용자가 고른 속도: 범위 안이면 목표 속도, 범위 밖이면 센서 고장 주입
   function setSpeedCommand(v) {
+    var why = speedBlocked(v);
+    if (why) { notifyDrive(why); renderControls(); return; }
     if (isOob("vehicle_speed_kph", v)) {
       drive.fault = v;
       log("in", "속도 센서 고장 주입: 송신값 " + v + " km/h (실제 속도 " + fmtNum(drive.speed) + " km/h)");
@@ -370,6 +389,7 @@
           if (isDrive) b.title = "속도 센서 고장 주입: 이 값을 그대로 송신합니다";
         }
         b.addEventListener("click", function () { setter(v); });
+        b._value = v;
         chips.appendChild(b);
       });
 
@@ -389,6 +409,7 @@
         var v = parseFloat(num.value);
         if (isFinite(v)) setter(v);
         else num.value = inputs[name];
+        if (isDrive) num.value = drive.fault !== null ? drive.fault : drive.target; // 막혔으면 이전 값으로
       });
       box._range = range;
       box._num = num;
@@ -426,8 +447,10 @@
 
     $("btn-reset").addEventListener("click", function () {
       var stopped = $("opt-start-stopped").checked;
+      if (stopped) setAllTx(false); // 새로 시작 전에 멈춰야 Init 뒤에 주기 신호가 들어가지 않는다
       requestReset(stopped ? "주기 신호 모두 중단 상태로 시작" : "버튼").then(function () {
         setAllTx(!stopped);
+        if (stopped) resetEvents();
         sendEventsOnce("새로 시작"); // B9
       }).catch(function (e) { log("sys", "새로 시작 실패: " + e.message); });
     });
@@ -488,6 +511,15 @@
       var oob = isOob(name, v);
       box.classList.toggle("oob", oob);
       if (box._status) {
+        // 시동 꺼짐: 범위 안 속도 입력 막힘 표시 (범위 밖 고장 주입 버튼은 그대로)
+        var off = !inputs.ignition_on;
+        box._range.disabled = off;
+        box._range.title = off ? speedBlocked(0) : "";
+        Array.prototype.forEach.call(box.querySelectorAll(".chips button"), function (b) {
+          var why = speedBlocked(b._value);
+          b.classList.toggle("blocked", !!why);
+          b.title = why || (b.classList.contains("out") ? "속도 센서 고장 주입: 이 값을 그대로 송신합니다" : "");
+        });
         box._status.textContent = driveStatus();
         box._note.textContent = drive.fault !== null ? "속도 센서 고장 주입 중: " + drive.fault +
           " km/h를 그대로 송신합니다 (범위 안 속도를 고르면 해제)" : "";
@@ -523,6 +555,8 @@
       log("sys", "서버가 수신 시각(rx)을 보내지 않습니다 - 이전 버전 server.py입니다. 서버를 다시 시작하세요");
     }
     logLastRx(msg);
+    outHistory.push(msg);
+    if (outHistory.length > 400) outHistory.shift(); // 20초
     outputWaiters.slice().forEach(function (w) { w(msg); });
   }
 
@@ -531,7 +565,11 @@
     return new Promise(function (resolve, reject) {
       var timer = setTimeout(function () { done(); reject(new Error(what + " 대기 시간 초과")); }, limitMs);
       function done() { clearTimeout(timer); outputWaiters = outputWaiters.filter(function (x) { return x !== w; }); }
-      function w(msg) { if (cond(msg)) { done(); resolve(msg); } }
+      function w(msg) {
+        var ok;
+        try { ok = cond(msg); } catch (e) { done(); reject(e); return; }
+        if (ok) { done(); resolve(msg); }
+      }
       outputWaiters.push(w);
     });
   }
@@ -708,7 +746,7 @@
   // ================================================================ 기록 (증거)
   var logRows = [];
   var LOG_MAX = 20000;
-  var KIND_TEXT = { out: "출력", "in": "입력", sys: "시스템", mark: "기준", valid: "유효 속도", pass: "판정", fail: "판정" };
+  var KIND_TEXT = { out: "출력", "in": "입력", sys: "시스템", mark: "기준", valid: "유효 속도", obs: "측정" };
 
   function log(kind, text) {
     var row = { time: lastTime, rel: (markerTime === null || lastTime === null) ? null : lastTime - markerTime, kind: kind, text: text };
@@ -896,9 +934,11 @@
     msg.className = "msg";
     msg.textContent = "새로 시작 중…";
     log("sys", c.id + " 사전조건 적용 시작");
+    if (p.stopAll) setAllTx(false); // 새로 시작 전에 멈춰야 Init 뒤에 주기 신호가 들어가지 않는다
 
     requestReset(c.id + " 사전조건").then(function () {
       setAllTx(!p.stopAll);
+      if (p.stopAll) resetEvents(); // C4-02·C5: 이벤트 신호는 초기값으로 1회
       sendEventsOnce("새로 시작"); // B9
       var chain = Promise.resolve();
       p.steps.forEach(function (st) {
@@ -929,51 +969,241 @@
     });
   }
 
-  // ================================================================ 자동 시험
-  // 사전조건 적용 뒤 '테스트 수행'을 누르면 05 문서의 테스트 절차를 그대로 진행하고 예상 결과와 비교해 기록한다.
-  // 시각은 모두 VehicleController의 time_ms(출력 메시지)로 잰다. 판정에 서버 rx 필드(수신 Step 시각)를 쓴다.
+  // ================================================================ 자동 실행
+  // 사전조건 적용 뒤 '테스트 수행'을 누르면 05 문서의 테스트 절차대로 입력을 넣고, 절차의 확인 시점 출력값을 기록한다.
+  // 판정(PASS/FAIL)은 하지 않는다. 시험자가 기록을 05 문서 '예상 결과'와 비교해 판정한다.
+  // 시각은 VehicleController의 time_ms(50 ms Step)로 잰다. 수신 시각은 서버 rx 필드(C와 같은 규칙)를 쓴다.
+  // 0.49초 확인: Step이 50 ms라 0.5초 전 마지막 출력(0.45초)이 0.49초 시점의 상태다.
   var AUTO_TESTS = {};
 
-  // TC-C1-01: 와이퍼 LOW 10초 (조명 스위치 OFF) → AUTO 입력 직후 전조등 켜짐 (C1, L6)
-  AUTO_TESTS["TC-C1-01"] = function (t) {
-    var t0;
-    var earlyOn = null; // 0~9.9초 사이 전조등이 켜진 시각
-    t.say("1) t=0초 와이퍼 스위치 LOW 입력 (조명 스위치 OFF 유지)");
-    setValue("wiper_switch", "LOW");
-    return waitOutput(function (o) { return o.wiper_level !== "STOP"; }, 2000, "와이퍼 작동").then(function (o) {
-      t0 = o.time_ms;
-      setMarkerAt(t0, "와이퍼 작동 시작 (L6 작동 시간 측정 시작)");
-      t.say("2) 9.9초 시점 전조등 확인까지 대기");
+  var OUT_TEXT = {
+    headlamp_on: function (o) { return "전조등 " + (o.headlamp_on ? "켜짐" : "꺼짐"); },
+    wiper_level: function (o) { return "와이퍼 " + (WIPER_TEXT[o.wiper_level] || o.wiper_level); },
+    door_locked: function (o) { return "도어 잠금 " + (o.door_locked ? "잠김" : "풀림"); },
+    cluster_warning: function (o) {
+      return o.cluster_warning === "NONE" ? "계기판 경고 없음" : "계기판 경고 " + (WARNING_TEXT[o.cluster_warning] || o.cluster_warning);
+    },
+    ambient_light_sensor_fault: function (o) { return "조도 센서 고장 표시 " + (o.ambient_light_sensor_fault ? "고장" : "정상"); },
+    rain_sensor_fault: function (o) { return "강우 센서 고장 표시 " + (o.rain_sensor_fault ? "고장" : "정상"); },
+    vehicle_speed_valid: function (o) { return "유효한 속도: " + (o.vehicle_speed_valid ? "유효" : "무효"); },
+    vehicle_state_timeout: function (o) { return "차량 상태 수신 중단" + (o.vehicle_state_timeout ? "" : " 아님"); }
+  };
+
+  function outText(o, fields) {
+    return fields.map(function (f) { return OUT_TEXT[f](o); }).join(", ");
+  }
+
+  // 자동 실행 중 쓰는 도구 모음. t0(기준 시각)은 setMarkerAt으로 기록의 't=0 기준' 열과 같게 맞춘다
+  function autoContext(c, msg) {
+    var t = { t0: null };
+    t.say = function (text) { msg.textContent = text; log("sys", c.id + " " + text); };
+    t.record = function (text) { log("obs", c.id + " " + text); };
+    t.rel = function (ms) { return ((ms - t.t0) / 1000).toFixed(2) + "초"; };
+    t.zero = function (ms, why) { t.t0 = ms; setMarkerAt(ms, why); };
+
+    // time_ms가 ms 이상인 첫 출력 (이미 지나갔으면 기록해 둔 출력에서 찾는다)
+    t.at = function (ms) {
+      for (var i = 0; i < outHistory.length; i++) {
+        if (outHistory[i].time_ms >= ms) return Promise.resolve(outHistory[i]);
+      }
+      return waitOutput(function (o) { return o.time_ms >= ms; }, ms - (lastTime || 0) + 3000, "time_ms " + ms);
+    };
+
+    // 확인 시점 출력값 기록
+    t.snap = function (label, ms, fields) {
+      return t.at(ms).then(function (o) {
+        t.record(label + " (time_ms " + o.time_ms + ", t=" + t.rel(o.time_ms) + "): " + outText(o, fields));
+        return o;
+      });
+    };
+
+    // 0.5초 경계: 0.49초(=0.45초 출력), 0.50초, 0.50초에 key가 아직 안 바뀌었으면 +50 ms(0.55초)도 기록
+    t.boundary = function (fields, key) {
+      var before;
+      return t.snap("0.49초 (0.5초 전 마지막 출력)", t.t0 + RX_TIMEOUT_MS - STEP_MS, fields).then(function (o) {
+        before = o;
+        return t.snap("0.50초", t.t0 + RX_TIMEOUT_MS, fields);
+      }).then(function (o) {
+        if (o[key] === before[key]) return t.snap("0.50초 + 50 ms", t.t0 + RX_TIMEOUT_MS + STEP_MS, fields);
+        return o;
+      });
+    };
+
+    // 입력 송신 후 VC가 그 값을 받은 Step 시각을 돌려준다.
+    // 주기 신호는 절차 시점을 맞추려고 다음 100 ms 송신을 기다리지 않고 1회 즉시 보낸다 (이후 주기 송신도 새 값)
+    t.send = function (name, value) {
+      var sentAt = lastTime;
+      if (PERIODIC.indexOf(name) >= 0) {
+        setPeriodic(name, value);
+        if (txEnabled[name]) {
+          var s = {};
+          s[name] = value;
+          sendInput(s, "자동 실행 즉시 송신");
+        }
+      } else {
+        setEvent(name, value);
+      }
       return waitOutput(function (o) {
-        if (o.headlamp_on && earlyOn === null) earlyOn = o.time_ms;
-        return o.time_ms >= t0 + 9900;
-      }, 15000, "9.9초 시점");
-    }).then(function (o) {
-      t.check("9.9초: 전조등 꺼짐(L4)", !o.headlamp_on && earlyOn === null,
-        "time_ms " + o.time_ms + " (t=" + t.rel(o.time_ms) + ") 전조등 " + (o.headlamp_on ? "켜짐" : "꺼짐") +
-        (earlyOn !== null ? ", time_ms " + earlyOn + "에 먼저 켜짐" : ""));
-      // 9.95초 출력을 받은 직후 보내면 다음 Step(10.0초)에서 수신된다
-      return waitOutput(function (o) { return o.time_ms >= t0 + 9950; }, 2000, "9.95초 시점");
+        if (!o.rx) throw new Error("서버가 수신 시각(rx)을 보내지 않습니다. server.py를 다시 시작하세요");
+        var r = o.rx[name];
+        return r.received && r.value === value && r.since_ms > sentAt;
+      }, 3000, LABEL[name] + " " + value + " 수신").then(function (o) {
+        var at = o.rx[name].since_ms;
+        t.record(LABEL[name] + " = " + fmtValue(name, value) + " 수신 (time_ms " + at + (t.t0 === null ? "" : ", t=" + t.rel(at)) + ")");
+        return at;
+      });
+    };
+
+    // 주기 신호 송신 중단 → 마지막 수신 시각을 t=0으로. 중단 직전에 보낸 값까지 반영되도록 150 ms 뒤 확정
+    t.stopTx = function (names) {
+      var click = lastTime;
+      names.forEach(function (k) { setTx(k, false); });
+      return t.at(click + 150).then(function (o) {
+        if (!o.rx) throw new Error("서버가 수신 시각(rx)을 보내지 않습니다. server.py를 다시 시작하세요");
+        var last = Math.min.apply(null, names.map(function (k) { return o.rx[k].last_rx_ms; }));
+        names.forEach(function (k) {
+          t.record(LABEL[k] + " 마지막 수신 time_ms " + o.rx[k].last_rx_ms + " (값 " + fmtValue(k, o.rx[k].value) + ")");
+        });
+        t.zero(last, names.map(function (k) { return LABEL[k]; }).join(" · ") + " 마지막 수신 (t=0초)");
+        return last;
+      });
+    };
+
+    // 프로그램 새로 시작: 주기 신호 5개 모두 중단 + 이벤트 신호 초기값 1회 (C4-02·C5, 03 B8·B9). 시작 시각 0 = t=0
+    t.restart = function () {
+      setAllTx(false); // 새로 시작 전에 멈춰야 Init 뒤에 주기 신호가 들어가지 않는다
+      return requestReset(c.id + " 자동 실행 - 프로그램 시작").then(function () {
+        resetEvents();
+        sendEventsOnce("새로 시작"); // B9
+        t.zero(0, "프로그램 시작 (t=0초)");
+      });
+    };
+    return t;
+  }
+
+  // TC-C1-01: 와이퍼 LOW 10초 (조명 스위치 OFF) → AUTO 입력 직후 전조등 (C1, L6)
+  AUTO_TESTS["TC-C1-01"] = function (t) {
+    var F = ["headlamp_on", "wiper_level"];
+    t.say("1) t=0초 와이퍼 스위치 LOW 입력 (조명 스위치 OFF 유지)");
+    return t.send("wiper_switch", "LOW").then(function (at) {
+      t.zero(at, "와이퍼 스위치 LOW 수신 (t=0초)");
+      t.say("2) 9.9초 시점 전조등 확인");
+      return t.snap("9.9초", t.t0 + 9900, F);
+    }).then(function () {
+      return t.at(t.t0 + 9950); // 이 출력을 받은 직후 보내면 다음 Step(10.0초)에서 수신된다
     }).then(function () {
       t.say("3) t=10.0초 조명 스위치 AUTO 입력");
-      setValue("light_switch", "AUTO");
-      return waitOutput(function (o) {
-        var r = o.rx && o.rx.light_switch;
-        return r && r.value === "AUTO" && r.last_rx_ms > t0;
-      }, 2000, "AUTO 수신");
-    }).then(function (o) {
-      var rxAt = o.rx.light_switch.last_rx_ms;
-      t.say("조명 스위치 AUTO 수신: time_ms " + rxAt + " (t=" + t.rel(rxAt) + ")");
-      if (o.headlamp_on) return { o: o, rxAt: rxAt };
-      return waitOutput(function (x) { return x.headlamp_on || x.time_ms > rxAt + 50; }, 2000, "전조등 확인")
-        .then(function (x) { return { o: x, rxAt: rxAt }; });
-    }).then(function (r) {
+      return t.send("light_switch", "AUTO");
+    }).then(function (at) {
       t.say("4) 전조등 확인");
-      t.check("AUTO 입력 직후(+50 ms 이내): 전조등 켜짐(L6)", r.o.headlamp_on && r.o.time_ms - r.rxAt <= 50,
-        "AUTO 수신 time_ms " + r.rxAt + " → time_ms " + r.o.time_ms + " (+" + (r.o.time_ms - r.rxAt) + " ms) 전조등 " +
-        (r.o.headlamp_on ? "켜짐" : "꺼짐") + ", 와이퍼 작동 " + ((r.o.time_ms - t0) / 1000).toFixed(2) + "초");
+      return t.snap("AUTO 수신 Step", at, F).then(function () { return t.snap("AUTO 수신 + 50 ms", at + STEP_MS, F); });
     });
   };
+
+  // TC-C1-02: 조도 900 (0.8초) → 1200 (0.2초) → 900, 연속 시간 초기화 (C1, L2)
+  AUTO_TESTS["TC-C1-02"] = function (t) {
+    var F = ["headlamp_on"];
+    var a, b;
+    t.say("1) 조도 900 lux를 0.8초 유지");
+    return t.send("ambient_light_lux", 900).then(function (at) {
+      a = at;
+      t.zero(at, "조도 900 lux 수신 (t=0초)");
+      return t.at(a + 800 - STEP_MS);
+    }).then(function () {
+      t.say("2) 조도 1200 lux 입력 후 0.2초 유지");
+      return t.send("ambient_light_lux", 1200);
+    }).then(function (at) {
+      b = at;
+      t.record("900 lux 유지 시간: " + (b - a) + " ms");
+      return t.at(b + 200 - STEP_MS);
+    }).then(function () {
+      t.say("3) 조도 900 lux 재입력");
+      return t.send("ambient_light_lux", 900);
+    }).then(function (c2) {
+      t.record("1200 lux 유지 시간: " + (c2 - b) + " ms");
+      t.say("4) 재입력 후 0.2초 시점 확인 5) 재입력 후 1초 시점 확인");
+      return t.snap("재입력 후 0.2초 (900 lux 누적 1초)", c2 + 200, F).then(function () {
+        return t.snap("재입력 후 1.0초", c2 + 1000, F);
+      }).then(function (o) {
+        if (!o.headlamp_on) return t.snap("재입력 후 1.0초 + 50 ms", c2 + 1000 + STEP_MS, F);
+      });
+    });
+  };
+
+  // TC-C2-01: 조도 송신 중단, 미수신 0.5초 경계 (C2)
+  AUTO_TESTS["TC-C2-01"] = function (t) {
+    t.say("1) 조도 송신 중단 (마지막 수신 시각 = 0초) 2) 0.49초 확인 3) 0.50초 확인");
+    return t.stopTx(["ambient_light_lux"]).then(function () {
+      return t.boundary(["ambient_light_sensor_fault", "headlamp_on", "cluster_warning"], "ambient_light_sensor_fault");
+    });
+  };
+
+  // TC-C2-02: 강우량 120% → 50% (C2 범위)
+  AUTO_TESTS["TC-C2-02"] = function (t) {
+    var F = ["rain_sensor_fault", "wiper_level", "cluster_warning"];
+    var r1;
+    t.say("1) 강우량 120% 입력 2) 확인");
+    return t.send("rain_level_pct", 120).then(function (at) {
+      r1 = at;
+      t.zero(at, "강우량 120% 수신 (t=0초)");
+      return t.snap("120% 수신 Step", at, F).then(function () { return t.snap("120% 수신 + 50 ms", at + STEP_MS, F); });
+    }).then(function () {
+      return t.at(r1 + 1000);
+    }).then(function () {
+      t.say("3) 강우량 50% 입력 4) 다시 확인");
+      return t.send("rain_level_pct", 50);
+    }).then(function (at) {
+      return t.snap("50% 수신 Step", at, F).then(function () { return t.snap("50% 수신 + 50 ms", at + STEP_MS, F); });
+    });
+  };
+
+  // TC-C3-01: 속도·기어·시동 송신 중단, 0.49초에 유효한 속도 유지 (C3)
+  AUTO_TESTS["TC-C3-01"] = function (t) {
+    t.say("1) 속도 · 기어 · 시동 송신 중단 (마지막 수신 시각 = 0초) 2) 0.49초 시점 확인");
+    return t.stopTx(["vehicle_speed_kph", "gear_position", "ignition_on"]).then(function () {
+      return t.snap("0.49초 (0.5초 전 마지막 출력)", t.t0 + RX_TIMEOUT_MS - STEP_MS,
+        ["vehicle_speed_valid", "cluster_warning"]);
+    });
+  };
+
+  // TC-C3-02: 시동 송신 중단, 0.50초에 유효한 속도 무효 (C3)
+  AUTO_TESTS["TC-C3-02"] = function (t) {
+    t.say("1) 시동 송신 중단 (마지막 수신 시각 = 0초) 2) 0.50초 시점 확인");
+    return t.stopTx(["ignition_on"]).then(function () {
+      return t.boundary(["vehicle_speed_valid", "cluster_warning"], "vehicle_speed_valid");
+    });
+  };
+
+  // TC-C4-01: 속도 송신 중단, 차량 상태 수신 중단 0.5초 경계 (C4, D1)
+  AUTO_TESTS["TC-C4-01"] = function (t) {
+    t.say("1) 속도 송신 중단 (마지막 수신 시각 = 0초) 2) 0.49초 확인 3) 0.50초 확인");
+    return t.stopTx(["vehicle_speed_kph"]).then(function () {
+      return t.boundary(["vehicle_state_timeout", "headlamp_on", "wiper_level", "door_locked"], "vehicle_state_timeout");
+    });
+  };
+
+  // TC-C4-02: 시작 후 주기 신호 없음, 0.5초를 시작 시점부터 계산 (C4, C2)
+  AUTO_TESTS["TC-C4-02"] = function (t) {
+    t.say("1) 프로그램 시작 (시작 시각 = 0초) 2) 주기 신호 5개를 보내지 않음 3) 0.49초 확인 4) 0.50초 확인");
+    return t.restart().then(function () {
+      return t.boundary(["vehicle_state_timeout", "ambient_light_sensor_fault", "rain_sensor_fault", "cluster_warning"],
+        "vehicle_state_timeout");
+    });
+  };
+
+  // TC-C5-01·02: 시작 후 0.5초 이전 초기 출력 (C5)
+  function startState(fields) {
+    return function (t) {
+      t.say("1) 프로그램 시작 2) 0.5초가 지나기 전 출력 확인");
+      return t.restart().then(function () {
+        return t.snap("시작 후 첫 출력", 0, fields);
+      }).then(function () {
+        return t.snap("0.5초 전 마지막 출력", RX_TIMEOUT_MS - STEP_MS, fields);
+      });
+    };
+  }
+  AUTO_TESTS["TC-C5-01"] = startState(["headlamp_on", "wiper_level", "ambient_light_sensor_fault", "rain_sensor_fault"]);
+  AUTO_TESTS["TC-C5-02"] = startState(["door_locked", "cluster_warning"]);
 
   function runAuto(c, fn, btn, go, msg) {
     if (presetRunning) return;
@@ -981,25 +1211,14 @@
     btn.disabled = true;
     go.disabled = true;
     msg.className = "msg";
-    msg.textContent = "테스트 수행 중…";
-    var results = [];
-    var t = {
-      say: function (text) { msg.textContent = text; log("sys", c.id + " " + text); },
-      check: function (name, ok, detail) {
-        results.push(ok);
-        log(ok ? "pass" : "fail", (ok ? "PASS" : "FAIL") + " " + c.id + " " + name + " - " + detail);
-      },
-      rel: function (ms) { return ((ms - markerTime) / 1000).toFixed(2) + " s"; }
-    };
-    log("sys", c.id + " 테스트 수행 시작");
+    log("sys", c.id + " 자동 실행 시작 (판정은 05 문서 '예상 결과'와 비교해 시험자가 함)");
+    var t = autoContext(c, msg);
     Promise.resolve().then(function () { return fn(t); }).then(function () {
-      var pass = results.length > 0 && results.every(Boolean);
-      log(pass ? "pass" : "fail", c.id + " 최종 판정: " + (pass ? "PASS" : "FAIL") + " (" + results.filter(Boolean).length + "/" +
-        results.length + " 항목 통과)");
-      msg.className = "msg " + (pass ? "done" : "fail");
-      msg.textContent = "최종 판정: " + (pass ? "PASS" : "FAIL") + " - 자세한 내용은 기록 참고";
+      log("sys", c.id + " 자동 실행 완료");
+      msg.className = "msg done";
+      msg.textContent = "자동 실행 완료 - 기록의 '측정' 행을 '예상 결과'와 비교해 판정하세요";
     }).catch(function (e) {
-      log("fail", c.id + " 최종 판정: FAIL (중단: " + e.message + ")");
+      log("sys", c.id + " 자동 실행 중단: " + e.message);
       msg.className = "msg fail";
       msg.textContent = "중단: " + e.message;
     }).then(function () {
