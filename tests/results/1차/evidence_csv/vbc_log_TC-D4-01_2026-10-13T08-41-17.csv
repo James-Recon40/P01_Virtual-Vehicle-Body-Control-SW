@@ -1,0 +1,26 @@
+﻿time_ms,t0_rel_ms,kind,detail
+19750,,시스템,TC-D4-01 사전조건 적용 시작
+19750,,시스템,새로 시작 요청 (TC-D4-01 사전조건)
+0,,시스템,"VehicleController_Init() 완료, time_ms = 0부터 다시 시작"
+0,,입력,"이벤트 신호 6개 1회 송신(새로 시작) {""door_fl_open"":false,""door_fr_open"":false,""door_rl_open"":false,""door_rr_open"":false,""light_switch"":""OFF"",""wiper_switch"":""OFF""}"
+0,,입력,속도 = 10 (다음 주기 송신부터)
+0,,출력,"headlamp_on=false, wiper_level=STOP, door_locked=false, cluster_warning=NONE, ambient_light_sensor_fault=false, rain_sensor_fault=false, vehicle_speed_valid=false, vehicle_state_timeout=false"
+50,,출력,vehicle_speed_valid: false → true
+50,,유효 속도,유효한 속도: 무효 → 유효 (속도 10 km/h)
+300,,시스템,TC-D4-01 사전조건 적용 완료
+22500,,입력,"이벤트 {""door_fl_open"":true}"
+22550,,출력,cluster_warning: NONE → DOOR_OPEN
+41500,,입력,"이벤트 {""door_fl_open"":false}"
+41550,,출력,cluster_warning: DOOR_OPEN → NONE
+48150,,입력,"이벤트 {""door_fr_open"":true}"
+48200,,출력,cluster_warning: NONE → DOOR_OPEN
+52400,,입력,"이벤트 {""door_fr_open"":false}"
+52450,,출력,cluster_warning: DOOR_OPEN → NONE
+53700,,입력,"이벤트 {""door_rl_open"":true}"
+53800,,출력,cluster_warning: NONE → DOOR_OPEN
+57850,,입력,"이벤트 {""door_rl_open"":false}"
+57900,,출력,cluster_warning: DOOR_OPEN → NONE
+59000,,입력,"이벤트 {""door_rr_open"":true}"
+59100,,출력,cluster_warning: NONE → DOOR_OPEN
+61550,,입력,"이벤트 {""door_rr_open"":false}"
+61600,,출력,cluster_warning: DOOR_OPEN → NONE

@@ -1,0 +1,25 @@
+﻿time_ms,t0_rel_ms,kind,detail
+13950,7900,시스템,TC-C3-01 사전조건 적용 시작
+13950,7900,시스템,새로 시작 요청 (TC-C3-01 사전조건)
+0,,시스템,"VehicleController_Init() 완료, time_ms = 0부터 다시 시작"
+0,,입력,속도 송신 재개
+0,,입력,기어 송신 재개
+0,,입력,시동 송신 재개
+0,,입력,"이벤트 신호 6개 1회 송신(새로 시작) {""door_fl_open"":true,""door_fr_open"":false,""door_rl_open"":false,""door_rr_open"":false,""light_switch"":""OFF"",""wiper_switch"":""OFF""}"
+0,,출력,"headlamp_on=false, wiper_level=STOP, door_locked=false, cluster_warning=NONE, ambient_light_sensor_fault=false, rain_sensor_fault=false, vehicle_speed_valid=false, vehicle_state_timeout=false"
+50,,출력,"door_locked: false → true, cluster_warning: NONE → DOOR_OPEN, vehicle_speed_valid: false → true"
+50,,유효 속도,유효한 속도: 무효 → 유효 (속도 50 km/h)
+300,,시스템,TC-C3-01 사전조건 적용 완료
+2500,,시스템,TC-C3-01 자동 실행 시작 (판정은 05 문서 '예상 결과'와 비교해 시험자가 함)
+2500,,시스템,TC-C3-01 1) 속도 · 기어 · 시동 송신 중단 (마지막 수신 시각 = 0초) 2) 0.49초 시점 확인
+2500,,입력,속도 송신 중단 · 마지막 수신 time_ms 2450 (미수신 0.5초 판정 시각 2950)
+2500,,입력,기어 송신 중단 · 마지막 수신 time_ms 2450 (미수신 0.5초 판정 시각 2950)
+2500,,입력,시동 송신 중단 · 마지막 수신 time_ms 2450 (미수신 0.5초 판정 시각 2950)
+2650,,측정,TC-C3-01 속도 마지막 수신 time_ms 2450 (값 50)
+2650,,측정,TC-C3-01 기어 마지막 수신 time_ms 2450 (값 D)
+2650,,측정,TC-C3-01 시동 마지막 수신 time_ms 2450 (값 켜짐)
+2650,200,기준,t=0 기준 시각 표시 (time_ms 2450) - 속도 · 기어 · 시동 마지막 수신 (t=0초)
+2900,450,측정,"TC-C3-01 0.49초 (0.5초 전 마지막 출력) (time_ms 2900, t=0.45초): 유효한 속도: 유효, 계기판 경고 주행 중 도어 열림"
+2900,450,시스템,TC-C3-01 자동 실행 완료
+2950,500,출력,"cluster_warning: DOOR_OPEN → NONE, vehicle_speed_valid: true → false, vehicle_state_timeout: false → true"
+2950,500,유효 속도,"유효한 속도: 유효 → 무효 (이유: 속도 미수신 500 ms (마지막 수신 2450), 기어 미수신 500 ms (마지막 수신 2450), 시동 미수신 500 ms (마지막 수신 2450))"
