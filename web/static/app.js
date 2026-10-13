@@ -162,7 +162,6 @@
   // - N·시동 꺼짐: 가속하지 않는다. 목표가 현재보다 낮으면 브레이크, 아니면 관성으로 천천히 감속
   // - 범위 밖 속도(-1, 251 등)는 '속도 센서 고장 주입': 실제 속도와 별개로 그 값을 그대로 보낸다 (C3 범위 판정 시험)
   // - 시동이 꺼져 있으면 속도(슬라이더·숫자 칸·속도 버튼)를 바꿀 수 없다. 범위 밖 값(-1, 251 등 C3 고장 주입)은 예외
-  // - 도어 잠금 출력이 잠김(D3)이면 닫힌 문을 열 수 없다. 열린 문은 언제든 닫을 수 있다
   // - TC 사전조건 적용은 이 규칙을 거치지 않고 값을 바로 세팅한다. 그 뒤로는 이 규칙대로 움직인다
   var DRIVE = { ACCEL: 10, BRAKE: 20, COAST: 2, REVERSE_MAX: 20, TICK_MS: 50 }; // km/h/s, ms
   var drive = { speed: 0, target: 0, fault: null };
@@ -185,10 +184,6 @@
 
   function speedBlocked(v) {
     return !inputs.ignition_on && !isOob("vehicle_speed_kph", v) ? "시동이 꺼져 있으면 속도를 바꿀 수 없습니다" : null;
-  }
-
-  function doorBlocked(name) {
-    return !inputs[name] && lastOut && lastOut.door_locked ? "도어 잠금이 잠김 상태라 문을 열 수 없습니다 (D3)" : null;
   }
 
   function notifyDrive(text) {
@@ -434,8 +429,6 @@
     Array.prototype.forEach.call(document.querySelectorAll("[data-door]"), function (el) {
       el.addEventListener("click", function () {
         var k = el.dataset.door;
-        var why = doorBlocked(k);
-        if (why) { notifyDrive(why); return; }
         setEvent(k, !inputs[k]);
       });
     });
@@ -534,10 +527,7 @@
       b.closest(".ctl").classList.toggle("stopped", !on);
     });
     Array.prototype.forEach.call(document.querySelectorAll(".door-btn"), function (b) {
-      var why = doorBlocked(b.dataset.door);
       b.classList.toggle("open", inputs[b.dataset.door]);
-      b.classList.toggle("blocked", !!why);
-      b.title = why || "";
     });
   }
 
@@ -549,7 +539,6 @@
     logOutputChange(prev, msg);
     renderOutputs();
     renderMarker();
-    if (!prev || prev.door_locked !== msg.door_locked) renderControls(); // 도어 열기 막힘 표시
     if (!msg.rx && !noRxWarned) {
       noRxWarned = true;
       log("sys", "서버가 수신 시각(rx)을 보내지 않습니다 - 이전 버전 server.py입니다. 서버를 다시 시작하세요");

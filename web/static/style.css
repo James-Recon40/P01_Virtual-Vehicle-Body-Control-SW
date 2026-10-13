@@ -201,7 +201,6 @@ h2 small, .sub, .hint { color: var(--muted); font-weight: 400; font-size: 12px; 
 .door-btn::after { content: " · 닫힘"; color: var(--muted); }
 .door-btn.open { background: #fff1db; border-color: var(--warn); }
 .door-btn.open::after { content: " · 열림"; color: var(--warn); font-weight: 600; }
-.door-btn.blocked { color: var(--muted); cursor: not-allowed; }
 @media (prefers-color-scheme: dark) { .door-btn.open { background: #3a2a12; } }
 
 /* ---- 테스트케이스 ---- */
