@@ -1,0 +1,20 @@
+﻿time_ms,t0_rel_ms,kind,detail
+437950,432750,시스템,TC-C2-01 사전조건 적용 시작
+437950,432750,시스템,새로 시작 요청 (TC-C2-01 사전조건)
+0,,시스템,"VehicleController_Init() 완료, time_ms = 0부터 다시 시작"
+0,,입력,"이벤트 신호 6개 1회 송신(새로 시작) {""door_fl_open"":false,""door_fr_open"":false,""door_rl_open"":false,""door_rr_open"":false,""light_switch"":""AUTO"",""wiper_switch"":""OFF""}"
+0,,입력,조도 = 1000 (다음 주기 송신부터)
+0,,입력,"이벤트 {""light_switch"":""OFF""}"
+0,,출력,"headlamp_on=false, wiper_level=STOP, door_locked=false, cluster_warning=NONE, ambient_light_sensor_fault=false, rain_sensor_fault=false, vehicle_speed_valid=false, vehicle_state_timeout=false"
+50,,출력,vehicle_speed_valid: false → true
+50,,유효 속도,유효한 속도: 무효 → 유효 (속도 0 km/h)
+300,,시스템,TC-C2-01 사전조건 적용 완료
+1950,,시스템,TC-C2-01 자동 실행 시작 (판정은 05 문서 '예상 결과'와 비교해 시험자가 함)
+1950,,시스템,TC-C2-01 1) 조도 송신 중단 (마지막 수신 시각 = 0초) 2) 0.49초 확인 3) 0.50초 확인
+1950,,입력,조도 송신 중단 · 마지막 수신 time_ms 1950 (미수신 0.5초 판정 시각 2450)
+2100,,측정,TC-C2-01 조도 마지막 수신 time_ms 1950 (값 1000)
+2100,150,기준,t=0 기준 시각 표시 (time_ms 1950) - 조도 마지막 수신 (t=0초)
+2400,450,측정,"TC-C2-01 0.49초 (0.5초 전 마지막 출력) (time_ms 2400, t=0.45초): 조도 센서 고장 표시 정상, 전조등 꺼짐, 계기판 경고 없음"
+2450,500,출력,"headlamp_on: false → true, cluster_warning: NONE → AMBIENT_SENSOR, ambient_light_sensor_fault: false → true"
+2450,500,측정,"TC-C2-01 0.50초 (time_ms 2450, t=0.50초): 조도 센서 고장 표시 고장, 전조등 켜짐, 계기판 경고 조도 센서 고장"
+2450,500,시스템,TC-C2-01 자동 실행 완료

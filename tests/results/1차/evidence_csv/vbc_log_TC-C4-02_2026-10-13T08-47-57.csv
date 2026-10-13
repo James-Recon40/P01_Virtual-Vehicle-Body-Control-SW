@@ -1,0 +1,19 @@
+﻿time_ms,t0_rel_ms,kind,detail
+2850,,시스템,TC-C4-02 사전조건 적용 시작
+2850,,시스템,새로 시작 요청 (TC-C4-02 사전조건)
+0,,시스템,"VehicleController_Init() 완료, time_ms = 0부터 다시 시작"
+0,,입력,"이벤트 신호 6개 1회 송신(새로 시작) {""door_fl_open"":false,""door_fr_open"":false,""door_rl_open"":false,""door_rr_open"":false,""light_switch"":""OFF"",""wiper_switch"":""OFF""}"
+0,,시스템,TC-C4-02 사전조건 적용 완료
+0,,출력,"headlamp_on=false, wiper_level=STOP, door_locked=false, cluster_warning=NONE, ambient_light_sensor_fault=false, rain_sensor_fault=false, vehicle_speed_valid=false, vehicle_state_timeout=false"
+500,,출력,"cluster_warning: NONE → AMBIENT_SENSOR, ambient_light_sensor_fault: false → true, rain_sensor_fault: false → true, vehicle_state_timeout: false → true"
+1500,,시스템,TC-C4-02 자동 실행 시작 (판정은 05 문서 '예상 결과'와 비교해 시험자가 함)
+1500,,시스템,TC-C4-02 1) 프로그램 시작 (시작 시각 = 0초) 2) 주기 신호 5개를 보내지 않음 3) 0.49초 확인 4) 0.50초 확인
+1500,,시스템,새로 시작 요청 (TC-C4-02 자동 실행 - 프로그램 시작)
+0,,시스템,"VehicleController_Init() 완료, time_ms = 0부터 다시 시작"
+0,,입력,"이벤트 신호 6개 1회 송신(새로 시작) {""door_fl_open"":false,""door_fr_open"":false,""door_rl_open"":false,""door_rr_open"":false,""light_switch"":""OFF"",""wiper_switch"":""OFF""}"
+0,0,기준,t=0 기준 시각 표시 (time_ms 0) - 프로그램 시작 (t=0초)
+0,0,출력,"headlamp_on=false, wiper_level=STOP, door_locked=false, cluster_warning=NONE, ambient_light_sensor_fault=false, rain_sensor_fault=false, vehicle_speed_valid=false, vehicle_state_timeout=false"
+450,450,측정,"TC-C4-02 0.49초 (0.5초 전 마지막 출력) (time_ms 450, t=0.45초): 차량 상태 수신 중단 아님, 조도 센서 고장 표시 정상, 강우 센서 고장 표시 정상, 계기판 경고 없음"
+500,500,출력,"cluster_warning: NONE → AMBIENT_SENSOR, ambient_light_sensor_fault: false → true, rain_sensor_fault: false → true, vehicle_state_timeout: false → true"
+500,500,측정,"TC-C4-02 0.50초 (time_ms 500, t=0.50초): 차량 상태 수신 중단, 조도 센서 고장 표시 고장, 강우 센서 고장 표시 고장, 계기판 경고 조도 센서 고장"
+500,500,시스템,TC-C4-02 자동 실행 완료

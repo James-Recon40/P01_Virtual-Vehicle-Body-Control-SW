@@ -1,0 +1,12 @@
+﻿time_ms,t0_rel_ms,kind,detail
+8850,,시스템,TC-D1-01 사전조건 적용 시작
+8850,,시스템,새로 시작 요청 (TC-D1-01 사전조건)
+0,,시스템,"VehicleController_Init() 완료, time_ms = 0부터 다시 시작"
+0,,입력,"이벤트 신호 6개 1회 송신(새로 시작) {""door_fl_open"":false,""door_fr_open"":false,""door_rl_open"":false,""door_rr_open"":false,""light_switch"":""OFF"",""wiper_switch"":""OFF""}"
+0,,출력,"headlamp_on=false, wiper_level=STOP, door_locked=false, cluster_warning=NONE, ambient_light_sensor_fault=false, rain_sensor_fault=false, vehicle_speed_valid=false, vehicle_state_timeout=false"
+100,,출력,"door_locked: false → true, vehicle_speed_valid: false → true"
+100,,유효 속도,유효한 속도: 무효 → 유효 (속도 20 km/h)
+300,,시스템,TC-D1-01 사전조건 적용 완료
+12900,,입력,속도 송신 중단 · 마지막 수신 time_ms 12900 (미수신 0.5초 판정 시각 13400)
+13400,,출력,"vehicle_speed_valid: true → false, vehicle_state_timeout: false → true"
+13400,,유효 속도,유효한 속도: 유효 → 무효 (이유: 속도 미수신 500 ms (마지막 수신 12900))

@@ -1,0 +1,31 @@
+﻿time_ms,t0_rel_ms,kind,detail
+142400,,시스템,TC-D5-02 사전조건 적용 시작
+142400,,시스템,새로 시작 요청 (TC-D5-02 사전조건)
+0,,시스템,"VehicleController_Init() 완료, time_ms = 0부터 다시 시작"
+0,,입력,조도 송신 재개
+0,,입력,"이벤트 신호 6개 1회 송신(새로 시작) {""door_fl_open"":true,""door_fr_open"":false,""door_rl_open"":false,""door_rr_open"":false,""light_switch"":""OFF"",""wiper_switch"":""OFF""}"
+0,,입력,"이벤트 {""door_fl_open"":false}"
+0,,출력,"headlamp_on=false, wiper_level=STOP, door_locked=false, cluster_warning=NONE, ambient_light_sensor_fault=false, rain_sensor_fault=false, vehicle_speed_valid=false, vehicle_state_timeout=false"
+100,,출력,vehicle_speed_valid: false → true
+100,,유효 속도,유효한 속도: 무효 → 유효 (속도 10 km/h)
+300,,시스템,TC-D5-02 사전조건 적용 완료
+12100,,입력,"이벤트 {""door_fl_open"":true}"
+12150,,출력,cluster_warning: NONE → DOOR_OPEN
+16600,,입력,조도 송신 중단 · 마지막 수신 time_ms 16600 (미수신 0.5초 판정 시각 17100)
+17100,,출력,"headlamp_on: false → true, ambient_light_sensor_fault: false → true"
+30650,,입력,"이벤트 {""door_fl_open"":false}"
+30700,,출력,cluster_warning: DOOR_OPEN → AMBIENT_SENSOR
+32100,,입력,조도 송신 재개
+32200,,출력,"headlamp_on: true → false, cluster_warning: AMBIENT_SENSOR → NONE, ambient_light_sensor_fault: true → false"
+37750,,입력,"이벤트 {""door_fl_open"":true}"
+37800,,출력,cluster_warning: NONE → DOOR_OPEN
+42350,,입력,강우량 송신 중단 · 마지막 수신 time_ms 42400 (미수신 0.5초 판정 시각 42900)
+42900,,출력,rain_sensor_fault: false → true
+61600,,입력,"이벤트 {""door_fl_open"":false}"
+61650,,출력,cluster_warning: DOOR_OPEN → RAIN_SENSOR
+69350,,입력,강우량 송신 재개
+69400,,출력,"cluster_warning: RAIN_SENSOR → NONE, rain_sensor_fault: true → false"
+84600,,입력,조도 송신 중단 · 마지막 수신 time_ms 84600 (미수신 0.5초 판정 시각 85100)
+85100,,출력,"headlamp_on: false → true, cluster_warning: NONE → AMBIENT_SENSOR, ambient_light_sensor_fault: false → true"
+86550,,입력,강우량 송신 중단 · 마지막 수신 time_ms 86600 (미수신 0.5초 판정 시각 87100)
+87100,,출력,rain_sensor_fault: false → true

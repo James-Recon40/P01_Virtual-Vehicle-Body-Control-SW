@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VBC 차체 편의 기능 시뮬레이터</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <div>
+      <h1>VBC 차체 편의 기능 시뮬레이터</h1>
+      <p class="sub">UI ↔ VehicleController (04 상세설계서 18_UI_연동)</p>
+    </div>
+  </div>
+  <div class="status">
+    <span id="conn" class="pill pill-off">연결 안 됨</span>
+    <span class="pill pill-plain">time_ms <b id="time-ms">-</b></span>
+    <span id="stub-badge" class="pill pill-warn" hidden></span>
+  </div>
+  <div class="actions">
+    <label class="check" title="03 개요 B8: C4·C5 시험용 옵션">
+      <input type="checkbox" id="opt-start-stopped"> 주기 신호 모두 중단 상태로 시작
+    </label>
+    <button id="btn-reset" class="btn btn-primary" title="VehicleController_Init()을 다시 호출하고 시각을 0으로 되돌립니다">새로 시작</button>
+  </div>
+</header>
+
+<main class="layout">
+  <!-- 왼쪽: 자동차 · 주변 환경 · 계기판 -->
+  <section class="col-left">
+    <div class="card scene-card">
+      <div class="card-head">
+        <h2>차량 · 주변 환경</h2>
+        <span class="hint">도어를 클릭하면 열고 닫을 수 있습니다</span>
+      </div>
+      <svg id="scene" viewBox="0 0 640 440" role="img" aria-label="차량과 주변 환경">
+        <defs>
+          <linearGradient id="beam" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0" stop-color="#fff6c4" stop-opacity=".85"/>
+            <stop offset="1" stop-color="#fff6c4" stop-opacity="0"/>
+          </linearGradient>
+          <pattern id="oob" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect width="7" height="14" fill="#d9480f" opacity=".18"/>
+          </pattern>
+          <clipPath id="scene-clip"><rect width="640" height="440" rx="10"/></clipPath>
+        </defs>
+        <g clip-path="url(#scene-clip)">
+          <rect id="env-ground" width="640" height="440" fill="#7fa36b"/>
+          <rect x="200" y="0" width="240" height="440" fill="#55585e"/>
+          <rect x="196" y="0" width="4" height="440" fill="#e9e9e9"/>
+          <rect x="440" y="0" width="4" height="440" fill="#e9e9e9"/>
+          <g id="lane"></g>
+
+          <!-- 차량 (위에서 본 모습, 위쪽이 앞) -->
+          <g id="car" transform="translate(320 250)">
+            <g id="beams" opacity="0">
+              <polygon points="-52,-128 -110,-330 10,-330 -30,-128" fill="url(#beam)"/>
+              <polygon points="30,-128 -10,-330 110,-330 52,-128" fill="url(#beam)"/>
+            </g>
+            <!-- 도어: 앞쪽 끝을 경첩으로 회전 -->
+            <g class="door" data-door="door_fl_open"><rect x="-70" y="-62" width="12" height="58" rx="3"/></g>
+            <g class="door" data-door="door_fr_open"><rect x="58" y="-62" width="12" height="58" rx="3"/></g>
+            <g class="door" data-door="door_rl_open"><rect x="-70" y="2" width="12" height="56" rx="3"/></g>
+            <g class="door" data-door="door_rr_open"><rect x="58" y="2" width="12" height="56" rx="3"/></g>
+            <rect class="car-body" x="-62" y="-130" width="124" height="250" rx="34"/>
+            <rect class="car-glass" x="-46" y="-78" width="92" height="40" rx="8"/>
+            <rect class="car-roof" x="-48" y="-36" width="96" height="98" rx="12"/>
+            <rect class="car-glass" x="-44" y="66" width="88" height="26" rx="8"/>
+            <ellipse id="lamp-l" class="lamp" cx="-40" cy="-124" rx="14" ry="6"/>
+            <ellipse id="lamp-r" class="lamp" cx="40" cy="-124" rx="14" ry="6"/>
+            <g id="wipers">
+              <line id="wiper-l" class="wiper" x1="-34" y1="-40" x2="6" y2="-40"/>
+              <line id="wiper-r" class="wiper" x1="18" y1="-40" x2="56" y2="-40"/>
+            </g>
+            <g id="lock" transform="translate(0 12)">
+              <circle r="20" class="lock-bg"/>
+              <path id="lock-shackle" d="M-7,-2 v-6 a7,7 0 0 1 14,0 v6" fill="none" stroke-width="3.5"/>
+              <rect x="-10" y="-2" width="20" height="15" rx="3"/>
+            </g>
+          </g>
+
+          <rect id="env-dark" width="640" height="440" fill="#0b1026" opacity="0" pointer-events="none"/>
+          <g id="rain" pointer-events="none"></g>
+          <rect id="oob-overlay" width="640" height="440" fill="url(#oob)" opacity="0" pointer-events="none"/>
+
+          <!-- 환경 라벨 -->
+          <g class="env-label" transform="translate(16 18)">
+            <rect width="200" height="58" rx="8"/>
+            <text x="12" y="23">조도 <tspan id="env-lux">-</tspan></text>
+            <text x="12" y="45">강우량 <tspan id="env-rain">-</tspan></text>
+          </g>
+          <g class="env-label" transform="translate(484 18)">
+            <rect width="140" height="58" rx="8"/>
+            <text x="12" y="23">속도 <tspan id="env-speed">-</tspan></text>
+            <text x="12" y="45">기어 <tspan id="env-gear">-</tspan></text>
+          </g>
+        </g>
+      </svg>
+    </div>
+
+    <div class="card cluster">
+      <div class="cluster-main">
+        <div class="gauge">
+          <div class="gauge-speed"><span id="cl-speed">0</span><small>km/h</small></div>
+          <div id="cl-speed-valid" class="tag">-</div>
+        </div>
+        <div class="cluster-center">
+          <div id="cl-warning" class="warning warn-none">
+            <span class="warning-icon" aria-hidden="true"></span>
+            <span id="cl-warning-text">경고 없음</span>
+          </div>
+          <div class="cluster-sub">
+            <span>기어 <b id="cl-gear">-</b></span>
+            <span>시동 <b id="cl-ign">-</b></span>
+          </div>
+        </div>
+      </div>
+      <div class="indicators">
+        <div class="ind" id="ind-headlamp"><span class="dot"></span><span class="k">전조등</span><b class="v">-</b></div>
+        <div class="ind" id="ind-wiper"><span class="dot"></span><span class="k">와이퍼</span><b class="v">-</b></div>
+        <div class="ind" id="ind-lock"><span class="dot"></span><span class="k">도어 잠금</span><b class="v">-</b></div>
+        <div class="ind" id="ind-lux-fault"><span class="dot"></span><span class="k">조도 센서</span><b class="v">-</b></div>
+        <div class="ind" id="ind-rain-fault"><span class="dot"></span><span class="k">강우 센서</span><b class="v">-</b></div>
+        <div class="ind" id="ind-timeout"><span class="dot"></span><span class="k">차량 상태 수신</span><b class="v">-</b></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 오른쪽: 입력 툴바 -->
+  <section class="col-right card controls">
+    <div class="card-head">
+      <h2>주기 신호 <small>100 ms마다 송신</small></h2>
+      <div class="btn-row">
+        <button class="btn btn-sm" id="btn-stop-all">모두 중단</button>
+        <button class="btn btn-sm" id="btn-resume-all">모두 재개</button>
+      </div>
+    </div>
+
+    <div id="drive-msg" class="drive-msg" role="status" aria-live="polite"></div>
+
+    <div class="ctl" data-signal="ignition_on">
+      <div class="ctl-head"><span class="ctl-name">시동</span><button class="tx-btn" data-tx="ignition_on"></button></div>
+      <div class="seg" id="ctl-ignition">
+        <button data-value="false">꺼짐</button><button data-value="true">켜짐</button>
+      </div>
+    </div>
+
+    <div class="ctl" data-signal="gear_position">
+      <div class="ctl-head"><span class="ctl-name">기어</span><button class="tx-btn" data-tx="gear_position"></button></div>
+      <div class="seg" id="ctl-gear">
+        <button data-value="P">P</button><button data-value="R">R</button><button data-value="N">N</button><button data-value="D">D</button>
+      </div>
+    </div>
+
+    <div class="ctl range-ctl" data-signal="vehicle_speed_kph" data-min="0" data-max="250" data-unit="km/h"
+         data-smin="0" data-smax="250" data-presets="-1,0,1,14,15,20,50,60,250,251" data-drive="1">
+      <div class="ctl-head"><span class="ctl-name">속도 <small>목표 속도 · 유효 0 ~ 250 km/h</small></span><button class="tx-btn" data-tx="vehicle_speed_kph"></button></div>
+    </div>
+
+    <div class="ctl range-ctl" data-signal="ambient_light_lux" data-min="0" data-max="60000" data-unit="lux"
+         data-smin="-5000" data-smax="70000" data-presets="-1,0,500,900,999,1000,1200,1500,1501,5000,60000,60001">
+      <div class="ctl-head"><span class="ctl-name">조도 <small>유효 0 ~ 60000 lux</small></span><button class="tx-btn" data-tx="ambient_light_lux"></button></div>
+    </div>
+
+    <div class="ctl range-ctl" data-signal="rain_level_pct" data-min="0" data-max="100" data-unit="%"
+         data-smin="-20" data-smax="150" data-presets="-1,0,9,10,39,40,50,69,70,80,100,101,120">
+      <div class="ctl-head"><span class="ctl-name">강우량 <small>유효 0 ~ 100 %</small></span><button class="tx-btn" data-tx="rain_level_pct"></button></div>
+    </div>
+
+    <div class="card-head sep">
+      <h2>이벤트 신호 <small>값이 바뀔 때 송신</small></h2>
+    </div>
+
+    <div class="ctl">
+      <div class="ctl-head"><span class="ctl-name">조명 스위치</span></div>
+      <div class="seg" id="ctl-light">
+        <button data-value="AUTO">AUTO</button><button data-value="OFF">OFF</button><button data-value="ON">ON</button>
+      </div>
+    </div>
+
+    <div class="ctl">
+      <div class="ctl-head"><span class="ctl-name">와이퍼 스위치</span></div>
+      <div class="seg" id="ctl-wiper">
+        <button data-value="OFF">OFF</button><button data-value="AUTO">AUTO</button><button data-value="LOW">LOW</button><button data-value="HIGH">HIGH</button>
+      </div>
+    </div>
+
+    <div class="ctl">
+      <div class="ctl-head"><span class="ctl-name">도어</span></div>
+      <div class="doors">
+        <button class="door-btn" data-door="door_fl_open">FL 앞좌</button>
+        <button class="door-btn" data-door="door_fr_open">FR 앞우</button>
+        <button class="door-btn" data-door="door_rl_open">RL 뒤좌</button>
+        <button class="door-btn" data-door="door_rr_open">RR 뒤우</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 아래: 테스트케이스 · 로그 -->
+  <section class="col-full card tc">
+    <div class="card-head">
+      <h2>테스트케이스 <small id="tc-source"></small></h2>
+      <input id="tc-search" type="search" placeholder="TC ID·목적 검색">
+    </div>
+    <div class="tc-body">
+      <nav id="tc-list" class="tc-list" aria-label="테스트케이스 목록"></nav>
+      <article id="tc-detail" class="tc-detail">
+        <p class="empty">왼쪽 목록에서 테스트케이스를 고르세요.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="col-full card log">
+    <div class="card-head">
+      <h2>기록 <small>입력 송신 · 출력 변화 (증거용)</small></h2>
+      <div class="btn-row">
+        <span class="pill pill-plain">기준 시각 이후 <b id="marker-elapsed">-</b></span>
+        <button class="btn btn-sm" id="btn-marker" title="현재 time_ms를 t=0으로 기록합니다">t=0 표시</button>
+        <label class="check"><input type="checkbox" id="opt-log-periodic"> 주기 송신도 기록</label>
+        <button class="btn btn-sm" id="btn-csv">CSV 저장</button>
+        <button class="btn btn-sm" id="btn-clear">지우기</button>
+      </div>
+    </div>
+    <div class="log-wrap">
+      <table>
+        <thead><tr><th>time_ms</th><th>t=0 기준</th><th>구분</th><th>내용</th></tr></thead>
+        <tbody id="log-body"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script src="presets.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

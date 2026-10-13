@@ -1,0 +1,19 @@
+﻿time_ms,t0_rel_ms,kind,detail
+2450,,시스템,TC-C5-01 사전조건 적용 시작
+2450,,시스템,새로 시작 요청 (TC-C5-01 사전조건)
+0,,시스템,"VehicleController_Init() 완료, time_ms = 0부터 다시 시작"
+0,,입력,"이벤트 신호 6개 1회 송신(새로 시작) {""door_fl_open"":false,""door_fr_open"":false,""door_rl_open"":false,""door_rr_open"":false,""light_switch"":""OFF"",""wiper_switch"":""OFF""}"
+0,,시스템,TC-C5-01 사전조건 적용 완료
+0,,출력,"headlamp_on=false, wiper_level=STOP, door_locked=false, cluster_warning=NONE, ambient_light_sensor_fault=false, rain_sensor_fault=false, vehicle_speed_valid=false, vehicle_state_timeout=false"
+500,,출력,"cluster_warning: NONE → AMBIENT_SENSOR, ambient_light_sensor_fault: false → true, rain_sensor_fault: false → true, vehicle_state_timeout: false → true"
+2200,,시스템,TC-C5-01 자동 실행 시작 (판정은 05 문서 '예상 결과'와 비교해 시험자가 함)
+2200,,시스템,TC-C5-01 1) 프로그램 시작 2) 0.5초가 지나기 전 출력 확인
+2200,,시스템,새로 시작 요청 (TC-C5-01 자동 실행 - 프로그램 시작)
+0,,시스템,"VehicleController_Init() 완료, time_ms = 0부터 다시 시작"
+0,,입력,"이벤트 신호 6개 1회 송신(새로 시작) {""door_fl_open"":false,""door_fr_open"":false,""door_rl_open"":false,""door_rr_open"":false,""light_switch"":""OFF"",""wiper_switch"":""OFF""}"
+0,0,기준,t=0 기준 시각 표시 (time_ms 0) - 프로그램 시작 (t=0초)
+0,0,출력,"headlamp_on=false, wiper_level=STOP, door_locked=false, cluster_warning=NONE, ambient_light_sensor_fault=false, rain_sensor_fault=false, vehicle_speed_valid=false, vehicle_state_timeout=false"
+0,0,측정,"TC-C5-01 시작 후 첫 출력 (time_ms 0, t=0.00초): 전조등 꺼짐, 와이퍼 정지, 조도 센서 고장 표시 정상, 강우 센서 고장 표시 정상"
+450,450,측정,"TC-C5-01 0.5초 전 마지막 출력 (time_ms 450, t=0.45초): 전조등 꺼짐, 와이퍼 정지, 조도 센서 고장 표시 정상, 강우 센서 고장 표시 정상"
+450,450,시스템,TC-C5-01 자동 실행 완료
+500,500,출력,"cluster_warning: NONE → AMBIENT_SENSOR, ambient_light_sensor_fault: false → true, rain_sensor_fault: false → true, vehicle_state_timeout: false → true"

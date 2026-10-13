@@ -1,0 +1,25 @@
+﻿time_ms,t0_rel_ms,kind,detail
+104600,100100,시스템,TC-C1-01 사전조건 적용 시작
+104600,100100,시스템,새로 시작 요청 (TC-C1-01 사전조건)
+0,,시스템,"VehicleController_Init() 완료, time_ms = 0부터 다시 시작"
+0,,입력,"이벤트 신호 6개 1회 송신(새로 시작) {""door_fl_open"":false,""door_fr_open"":false,""door_rl_open"":false,""door_rr_open"":false,""light_switch"":""AUTO"",""wiper_switch"":""LOW""}"
+0,,입력,"이벤트 {""light_switch"":""OFF""}"
+0,,입력,"이벤트 {""wiper_switch"":""OFF""}"
+0,,출력,"headlamp_on=false, wiper_level=STOP, door_locked=false, cluster_warning=NONE, ambient_light_sensor_fault=false, rain_sensor_fault=false, vehicle_speed_valid=false, vehicle_state_timeout=false"
+100,,출력,vehicle_speed_valid: false → true
+100,,유효 속도,유효한 속도: 무효 → 유효 (속도 0 km/h)
+3300,,시스템,TC-C1-01 사전조건 적용 완료
+5050,,시스템,TC-C1-01 테스트 수행 시작
+5050,,시스템,TC-C1-01 1) t=0초 와이퍼 스위치 LOW 입력 (조명 스위치 OFF 유지)
+5050,,입력,"이벤트 {""wiper_switch"":""LOW""}"
+5100,,출력,wiper_level: STOP → LOW
+5100,0,기준,t=0 기준 시각 표시 (time_ms 5100) - 와이퍼 작동 시작 (L6 작동 시간 측정 시작)
+5100,0,시스템,TC-C1-01 2) 9.9초 시점 전조등 확인까지 대기
+15000,9900,판정,PASS TC-C1-01 9.9초: 전조등 꺼짐(L4) - time_ms 15000 (t=9.90 s) 전조등 꺼짐
+15050,9950,시스템,TC-C1-01 3) t=10.0초 조명 스위치 AUTO 입력
+15050,9950,입력,"이벤트 {""light_switch"":""AUTO""}"
+15100,10000,출력,headlamp_on: false → true
+15100,10000,시스템,TC-C1-01 조명 스위치 AUTO 수신: time_ms 15100 (t=10.00 s)
+15100,10000,시스템,TC-C1-01 4) 전조등 확인
+15100,10000,판정,"PASS TC-C1-01 AUTO 입력 직후(+50 ms 이내): 전조등 켜짐(L6) - AUTO 수신 time_ms 15100 → time_ms 15100 (+0 ms) 전조등 켜짐, 와이퍼 작동 10.00초"
+15100,10000,판정,TC-C1-01 최종 판정: PASS (2/2 항목 통과)
