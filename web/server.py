@@ -14,6 +14,7 @@ server.py - 웹 UI ↔ VehicleController 브리지 (feature/ui)
                                  (TC 사전조건 '프로그램 새로 시작' 시연용)
   서버 → UI  {"type": "hello", "stubs": [...], "step_ms": 50}   연결 직후 1회
   서버 → UI  {"type": "reset_done"}                              reset 처리 직후
+  서버 → UI  output 메시지의 "rx" 필드                           신호별 수신 기록 (시험 확인용, 아래 RxTracker)
 
 외부 패키지 없이 Python 3.8+ 표준 라이브러리만 사용한다.
 실행: python3 web/server.py [--port 8080] [--host 127.0.0.1]
@@ -127,6 +128,39 @@ INPUT_FIELDS = {
 }
 
 
+# ---------------------------------------------------------------- 수신 기록 (시험 확인용)
+class RxTracker:
+    """신호별 '마지막 수신 시각'을 C 코드와 같은 규칙으로 따라 기록한다. 판정에는 쓰지 않는다.
+    - SetInputs에서 받은 신호는 다음 Step의 now_ms를 수신 시각으로 본다 (VC pending_rx_mask, TIME-04)
+    - 시작 시 마지막 수신 시각 = Init 시각 0, 수신한 적 없음 (Common_Init, C2·C4)
+    - 값이 바뀐 Step 시각(since_ms)도 기록한다: 같은 값이 얼마나 이어졌는지 확인용 (C1)
+    """
+
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.pending = {}
+        self.rx = {name: {"last_rx_ms": 0, "received": False, "value": None, "since_ms": None}
+                   for name in INPUT_FIELDS}
+
+    def on_input(self, name, value):
+        self.pending[name] = value
+
+    def on_step(self, now_ms):
+        for name, value in self.pending.items():
+            r = self.rx[name]
+            if not r["received"] or r["value"] != value:
+                r["since_ms"] = now_ms
+            r["last_rx_ms"] = now_ms
+            r["received"] = True
+            r["value"] = value
+        self.pending = {}
+
+    def snapshot(self):
+        return {name: dict(r) for name, r in self.rx.items()}
+
+
 # ---------------------------------------------------------------- build / load
 def build_library():
     """src/*/*.c (+ 없는 모듈은 스텁) + bridge 를 libvbc.so 로 빌드한다."""
@@ -190,10 +224,12 @@ class Engine:
         self.lock = threading.Lock()
         self.clients = set()
         self.clients_lock = threading.Lock()
+        self.rx = RxTracker()
         self._reset_locked()
 
     def _reset_locked(self):
         self.lib.VehicleController_Init()
+        self.rx.reset()
         self.tick = 0
         self.t0 = time.monotonic()
 
@@ -207,6 +243,7 @@ class Engine:
             return
         inp = VehicleInputs()
         mask = 0
+        accepted = {}
         for key, value in signals.items():
             spec = INPUT_FIELDS.get(key)
             if spec is None:
@@ -217,20 +254,27 @@ class Engine:
                 continue
             setattr(inp, field, converted)
             mask |= bit
+            accepted[key] = value
         if mask:
             with self.lock:
                 self.lib.VehicleController_SetInputs(ctypes.byref(inp), mask)
+                for key, value in accepted.items():
+                    self.rx.on_input(key, value)
 
     def run(self):
         while True:
             with self.lock:
                 now_ms = self.tick * MAIN_CYCLE_MS
                 self.lib.VehicleController_Step(now_ms)
+                self.rx.on_step(now_ms)
                 out = VehicleOutputs()
                 self.lib.VehicleController_GetOutputs(ctypes.byref(out))
+                rx = self.rx.snapshot()
                 self.tick += 1
                 next_at = self.t0 + self.tick * MAIN_CYCLE_MS / 1000.0
-            self.broadcast(output_message(now_ms, out))
+            msg = output_message(now_ms, out)
+            msg["rx"] = rx  # 18 시트 밖 시험용 필드
+            self.broadcast(msg)
             delay = next_at - time.monotonic()
             if delay > 0:
                 time.sleep(delay)

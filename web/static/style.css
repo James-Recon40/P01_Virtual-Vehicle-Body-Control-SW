@@ -199,6 +199,7 @@ h2 small, .sub, .hint { color: var(--muted); font-weight: 400; font-size: 12px; 
 .door-btn::after { content: " · 닫힘"; color: var(--muted); }
 .door-btn.open { background: #fff1db; border-color: var(--warn); }
 .door-btn.open::after { content: " · 열림"; color: var(--warn); font-weight: 600; }
+.door-btn.blocked { color: var(--muted); cursor: not-allowed; }
 @media (prefers-color-scheme: dark) { .door-btn.open { background: #3a2a12; } }
 
 /* ---- 테스트케이스 ---- */
@@ -223,6 +224,7 @@ h2 small, .sub, .hint { color: var(--muted); font-weight: 400; font-size: 12px; 
 .tc-run { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 10px 12px; background: var(--chip); border-radius: 8px; }
 .tc-run .msg { color: var(--muted); font-size: 13px; }
 .tc-run .msg.done { color: var(--ok); font-weight: 600; }
+.tc-run .msg.fail { color: var(--bad); font-weight: 600; }
 
 /* ---- 로그 ---- */
 .log-wrap { max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
@@ -236,6 +238,11 @@ h2 small, .sub, .hint { color: var(--muted); font-weight: 400; font-size: 12px; 
 .log tr.k-in td:nth-child(3) { color: var(--warn); }
 .log tr.k-sys td { color: var(--muted); }
 .log tr.k-mark td { background: var(--chip); font-weight: 600; }
+.log tr.k-valid td { font-weight: 600; }
+.log tr.k-valid td:nth-child(3) { color: var(--accent); }
+.log tr.k-pass td, .log tr.k-fail td { font-weight: 600; }
+.log tr.k-pass td:nth-child(3) { color: var(--ok); }
+.log tr.k-fail td { color: var(--bad); }
 
 /* 현실 주행: 막힌 조작, 안내 문구, 속도 상태 */
 .seg button.blocked { color: var(--muted); text-decoration: line-through; cursor: not-allowed; }

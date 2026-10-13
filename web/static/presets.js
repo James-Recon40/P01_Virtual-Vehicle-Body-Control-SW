@@ -36,7 +36,7 @@
   P["TC-C1-01"] = { steps: [{ set: base({}) }, { wait: 3000 + SETTLE }],
     note: "조도 5000 lux 3초 이상 유지" };
   P["TC-C1-02"] = { steps: [{ set: base({ light_switch: "AUTO" }) }, { wait: 3000 + SETTLE }],
-    note: "조도 5000 lux 3초 이상 유지 → 전조등 꺼짐(L3)" };
+    note: "조도 5000 lux 3초 이상 유지 → 전조등 꺼짐(L3). 적용 후 '수신 시간 기록'이 켜집니다" };
   P["TC-C2-01"] = { steps: [{ set: base({ ambient_light_lux: 1000 }) }, { wait: SETTLE }] };
   P["TC-C2-02"] = { steps: [{ set: base({ vehicle_speed_kph: 50, gear_position: "D", ambient_light_lux: 500,
     rain_level_pct: 50, light_switch: "AUTO", wiper_switch: "AUTO" }) }, { wait: 1000 + SETTLE }],
@@ -99,11 +99,17 @@
     { set: { gear_position: "D" } }, { wait: SETTLE }],
     note: "기어 P에서 D로 변경 → 도어 잠금 풀림" };
   P["TC-D3-02"] = P["TC-D1-01"];
-  P["TC-D4-01"] = P["TC-D1-01"];
+  // D4-01·D5-01: 팀 수정으로 10 km/h. 15 km/h 이상이면 잠겨(D3) 문을 열 수 없으므로 잠기기 전 속도에서 시험
+  P["TC-D4-01"] = { steps: [{ set: base({ vehicle_speed_kph: 10, gear_position: "D" }) }, { wait: SETTLE }],
+    note: "10 km/h → 도어 잠금 풀림 (문을 열 수 있음)" };
   P["TC-D4-02"] = { steps: [{ set: base({ vehicle_speed_kph: 1, gear_position: "D", door_fl_open: true }) },
     { wait: SETTLE }] };
-  P["TC-D5-01"] = P["TC-D1-01"];
+  P["TC-D5-01"] = P["TC-D4-01"];
   P["TC-D5-02"] = P["TC-D1-01"];
 
   window.VBC_PRESETS = P;
+
+  // 마지막 수신 시각으로 판정하는 TC (미수신 0.5초 C2·C4). 이 TC에서만 '송신 중단' 기록 옆에 마지막 수신 시각을 적는다
+  window.VBC_RX_LOG_TCS = ["TC-C1-02", "TC-C2-01", "TC-C3-01", "TC-C3-02", "TC-C4-01", "TC-C4-02", "TC-C5-01",
+    "TC-C5-02", "TC-L1-02", "TC-W5-01", "TC-D1-01", "TC-D1-02", "TC-D5-01", "TC-D5-02"];
 })();
