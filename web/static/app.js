@@ -5,7 +5,8 @@
  * - 주기 신호 5개: 100 ms마다 한 메시지로 송신. 송신 중단한 신호는 메시지에서 뺀다 (B7, B8)
  * - 이벤트 신호 6개: 값이 바뀔 때 바뀐 신호만 송신. 시작·재연결 시 6개 현재값을 1회 송신 (B7, B9)
  * - 화면 초기값은 03 SIG-001~011 Initial Value와 같다
- * - 속도·조도·강우량은 유효 범위 밖 값도 그대로 보낸다 (C2 시험용, 18 시트)
+ * - 조도·강우량은 유효 범위 밖 값도 그대로 보낸다 (C2 시험용, 18 시트)
+ * - 속도는 '현실 주행'으로 만든다 (아래 '현실 주행' 절). 범위 밖 속도는 '속도 센서 고장 주입'으로 그대로 보낸다
  */
 (function () {
   "use strict";
@@ -135,6 +136,127 @@
     waiters.forEach(function (w) { w(); });
   }
 
+  // ================================================================ 현실 주행 (UI 전용, VBC 요구사항 아님)
+  // 속도 슬라이더는 목표 속도다. 실제 속도는 기어·시동에 따라 서서히 바뀌고, 그 값을 속도 신호로 보낸다.
+  // - 기어 P·R은 정지(속도 0)일 때만 들어가고 나올 수 있다. D↔N은 주행 중에도 된다
+  // - 시동이 꺼져 있으면 기어를 바꿀 수 없다. 시동은 주행 중에 끌 수 없다
+  // - D·R(시동 켜짐): 목표 속도까지 가속·감속한다. R은 최대 REVERSE_MAX
+  // - N·시동 꺼짐: 가속하지 않는다. 목표가 현재보다 낮으면 브레이크, 아니면 관성으로 천천히 감속
+  // - 범위 밖 속도(-1, 251 등)는 '속도 센서 고장 주입': 실제 속도와 별개로 그 값을 그대로 보낸다 (C3 범위 판정 시험)
+  // - TC 사전조건 적용은 이 규칙을 거치지 않고 값을 바로 세팅한다. 그 뒤로는 이 규칙대로 움직인다
+  var DRIVE = { ACCEL: 10, BRAKE: 20, COAST: 2, REVERSE_MAX: 20, TICK_MS: 50 }; // km/h/s, ms
+  var drive = { speed: 0, target: 0, fault: null };
+  var driveMsgTimer = null;
+
+  function gearBlocked(to) {
+    var from = inputs.gear_position;
+    if (from === to) return null;
+    if (!inputs.ignition_on) return "시동이 꺼져 있으면 기어를 바꿀 수 없습니다";
+    if (drive.speed <= 0) return null;
+    if (from === "P" || to === "P" || from === "R" || to === "R") {
+      return "주행 중에는 기어 " + from + " → " + to + " 변경 불가 (P·R은 정지 상태에서만)";
+    }
+    return null;
+  }
+
+  function ignitionBlocked(on) {
+    return !on && inputs.ignition_on && drive.speed > 0 ? "주행 중에는 시동을 끌 수 없습니다" : null;
+  }
+
+  function notifyDrive(text) {
+    var el = $("drive-msg");
+    el.textContent = text;
+    el.classList.add("show");
+    log("sys", "막힘: " + text);
+    clearTimeout(driveMsgTimer);
+    driveMsgTimer = setTimeout(function () { el.textContent = ""; el.classList.remove("show"); }, 3000);
+  }
+
+  // 사용자가 누른 시동·기어: 현실 주행 규칙 확인 후 반영
+  function userSet(name, value) {
+    var why = name === "gear_position" ? gearBlocked(value) : name === "ignition_on" ? ignitionBlocked(value) : null;
+    if (why) { notifyDrive(why); return; }
+    setValue(name, value);
+  }
+
+  // 사용자가 고른 속도: 범위 안이면 목표 속도, 범위 밖이면 센서 고장 주입
+  function setSpeedCommand(v) {
+    if (isOob("vehicle_speed_kph", v)) {
+      drive.fault = v;
+      log("in", "속도 센서 고장 주입: 송신값 " + v + " km/h (실제 속도 " + fmtNum(drive.speed) + " km/h)");
+      sendSpeed(v);
+      return;
+    }
+    if (drive.fault !== null) log("in", "속도 센서 고장 주입 해제");
+    drive.fault = null;
+    if (drive.target !== v) log("in", "목표 속도 = " + v + " km/h");
+    drive.target = v;
+    sendSpeed(drive.speed);
+  }
+
+  // 속도 신호 값만 바꾼다 (기록은 호출한 쪽에서)
+  function sendSpeed(v) {
+    inputs.vehicle_speed_kph = v;
+    renderControls();
+    renderScene();
+  }
+
+  // TC 사전조건: 규칙을 거치지 않고 실제 속도·목표 속도를 바로 맞춘다
+  function setDirect(name, value) {
+    if (name === "vehicle_speed_kph") {
+      if (isOob(name, value)) {
+        drive.fault = value;
+      } else {
+        drive.fault = null;
+        drive.speed = drive.target = value;
+      }
+    }
+    setValue(name, value);
+    renderControls();
+    renderScene();
+  }
+
+  var lastDriveTick = performance.now();
+  setInterval(function () {
+    var now = performance.now();
+    var dt = Math.min(0.5, (now - lastDriveTick) / 1000);
+    lastDriveTick = now;
+
+    var g = inputs.gear_position;
+    var v = drive.speed;
+    var t = g === "R" ? Math.min(drive.target, DRIVE.REVERSE_MAX) : drive.target;
+    var powered = inputs.ignition_on && (g === "D" || g === "R");
+    if (g === "P") v = 0;
+    else if (powered && t > v) v = Math.min(t, v + DRIVE.ACCEL * dt);
+    else if (t < v) v = Math.max(t, v - DRIVE.BRAKE * dt);
+    else if (!powered) v = Math.max(0, v - DRIVE.COAST * dt);
+    v = Math.round(v * 100) / 100;
+    if (v === drive.speed) return;
+
+    var prev = drive.speed;
+    drive.speed = v;
+    if (v === 0) log("in", "차량 정지 (속도 0 km/h)");
+    else if (v === t && prev !== t) log("in", "속도 " + v + " km/h 도달");
+    if (drive.fault === null) sendSpeed(v);
+    else { renderControls(); renderScene(); }
+  }, DRIVE.TICK_MS);
+
+  function driveStatus() {
+    var g = inputs.gear_position, v = drive.speed;
+    var t = g === "R" ? Math.min(drive.target, DRIVE.REVERSE_MAX) : drive.target;
+    var head = "실제 " + fmtNum(v) + " km/h" + (g === "R" && v > 0 ? " (후진)" : "") + " · 목표 " + fmtNum(drive.target) + " km/h";
+    var state;
+    if (g === "P") state = "P: 정지";
+    else if (inputs.ignition_on && (g === "D" || g === "R")) {
+      state = v < t ? "가속 중" : v > t ? "감속 중" : v > 0 ? "속도 유지" : "정지";
+      if (g === "R" && drive.target > DRIVE.REVERSE_MAX) state += " (후진 최대 " + DRIVE.REVERSE_MAX + " km/h)";
+    } else {
+      var why = inputs.ignition_on ? "N" : "시동 꺼짐";
+      state = why + ": " + (v === 0 ? "정지" : t < v ? "브레이크 감속 중" : "관성 감속 중");
+    }
+    return head + " · " + state;
+  }
+
   // ================================================================ 입력 변경
   function setPeriodic(name, value) {
     if (inputs[name] === value) return;
@@ -189,6 +311,8 @@
       var name = box.dataset.signal;
       var min = +box.dataset.min, max = +box.dataset.max;
       var smin = +box.dataset.smin, smax = +box.dataset.smax;
+      var isDrive = !!box.dataset.drive;
+      var setter = isDrive ? setSpeedCommand : function (v) { setPeriodic(name, v); };
 
       var row = document.createElement("div");
       row.className = "range-row";
@@ -199,7 +323,7 @@
       var num = document.createElement("input");
       num.type = "number";
       num.step = "any";
-      num.setAttribute("aria-label", LABEL[name] + " 값 직접 입력 (범위 제한 없음)");
+      num.setAttribute("aria-label", LABEL[name] + " 값 직접 입력 (범위 제한 없음" + (isDrive ? ", 범위 밖은 센서 고장 주입)" : ")"));
       row.appendChild(range);
       row.appendChild(num);
 
@@ -213,7 +337,7 @@
       var legend = document.createElement("div");
       legend.className = "range-legend";
       legend.innerHTML = "<span>" + smin + "</span><span>유효 " + min + " ~ " + max + " " + box.dataset.unit +
-        " (빗금 = 범위 밖)</span><span>" + smax + "</span>";
+        (isDrive ? " (빨간 버튼 = 센서 고장 주입)" : " (빗금 = 범위 밖)") + "</span><span>" + smax + "</span>";
 
       var note = document.createElement("div");
       note.className = "oob-note";
@@ -225,8 +349,11 @@
         var b = document.createElement("button");
         b.type = "button";
         b.textContent = t;
-        if (v < min || v > max) b.className = "out";
-        b.addEventListener("click", function () { setPeriodic(name, v); });
+        if (v < min || v > max) {
+          b.className = "out";
+          if (isDrive) b.title = "속도 센서 고장 주입: 이 값을 그대로 송신합니다";
+        }
+        b.addEventListener("click", function () { setter(v); });
         chips.appendChild(b);
       });
 
@@ -234,12 +361,17 @@
       box.appendChild(track);
       box.appendChild(legend);
       box.appendChild(chips);
+      if (isDrive) {
+        box._status = document.createElement("div");
+        box._status.className = "drive-status";
+        box.appendChild(box._status);
+      }
       box.appendChild(note);
 
-      range.addEventListener("input", function () { setPeriodic(name, +range.value); });
+      range.addEventListener("input", function () { setter(+range.value); });
       num.addEventListener("change", function () {
         var v = parseFloat(num.value);
-        if (isFinite(v)) setPeriodic(name, v);
+        if (isFinite(v)) setter(v);
         else num.value = inputs[name];
       });
       box._range = range;
@@ -248,16 +380,17 @@
     });
   }
 
-  function bindSeg(id, name, parse) {
+  function bindSeg(id, name, parse, set) {
+    set = set || setValue;
     Array.prototype.forEach.call($(id).querySelectorAll("button"), function (b) {
-      b.addEventListener("click", function () { setValue(name, parse(b.dataset.value)); });
+      b.addEventListener("click", function () { set(name, parse(b.dataset.value)); });
     });
   }
 
   function bindControls() {
     buildRangeControls();
-    bindSeg("ctl-ignition", "ignition_on", function (v) { return v === "true"; });
-    bindSeg("ctl-gear", "gear_position", String);
+    bindSeg("ctl-ignition", "ignition_on", function (v) { return v === "true"; }, userSet);
+    bindSeg("ctl-gear", "gear_position", String, userSet);
     bindSeg("ctl-light", "light_switch", String);
     bindSeg("ctl-wiper", "wiper_switch", String);
 
@@ -311,15 +444,34 @@
     markSeg("ctl-gear", inputs.gear_position);
     markSeg("ctl-light", inputs.light_switch);
     markSeg("ctl-wiper", inputs.wiper_switch);
+    Array.prototype.forEach.call($("ctl-gear").querySelectorAll("button"), function (b) {
+      var why = gearBlocked(b.dataset.value);
+      b.classList.toggle("blocked", !!why);
+      b.title = why || "";
+    });
+    Array.prototype.forEach.call($("ctl-ignition").querySelectorAll("button"), function (b) {
+      var why = ignitionBlocked(b.dataset.value === "true");
+      b.classList.toggle("blocked", !!why);
+      b.title = why || "";
+    });
 
     Array.prototype.forEach.call(document.querySelectorAll(".range-ctl"), function (box) {
       var name = box.dataset.signal;
       var v = inputs[name];
-      if (box._range && +box._range.value !== v) box._range.value = v;
-      if (box._num && document.activeElement !== box._num) box._num.value = v;
+      // 속도: 슬라이더 = 목표 속도, 숫자 칸 = 목표 속도 또는 고장 주입값
+      var rv = box._status ? drive.target : v;
+      var nv = box._status && drive.fault !== null ? drive.fault : rv;
+      if (box._range && +box._range.value !== rv) box._range.value = rv;
+      if (box._num && document.activeElement !== box._num) box._num.value = nv;
       var oob = isOob(name, v);
       box.classList.toggle("oob", oob);
-      box._note.textContent = oob ? "유효 범위 밖 값입니다. 그대로 송신합니다 (C2 시험)" : "";
+      if (box._status) {
+        box._status.textContent = driveStatus();
+        box._note.textContent = drive.fault !== null ? "속도 센서 고장 주입 중: " + drive.fault +
+          " km/h를 그대로 송신합니다 (범위 안 속도를 고르면 해제)" : "";
+      } else {
+        box._note.textContent = oob ? "유효 범위 밖 값입니다. 그대로 송신합니다 (C2 시험)" : "";
+      }
     });
 
     Array.prototype.forEach.call(document.querySelectorAll(".tx-btn"), function (b) {
@@ -479,9 +631,8 @@
     var dt = Math.min(0.1, (now - prevFrame) / 1000);
     prevFrame = now;
 
-    var spd = inputs.vehicle_speed_kph;
-    var v = isFinite(spd) ? Math.max(0, Math.min(250, spd)) : 0;
-    laneOffset = (laneOffset + v * 4 * dt) % 80;
+    var v = drive.speed * (inputs.gear_position === "R" ? -1 : 1);
+    laneOffset = ((laneOffset + v * 4 * dt) % 80 + 80) % 80;
     laneMarks.forEach(function (r, i) { r.setAttribute("y", (i * 80 - 80 + laneOffset).toFixed(1)); });
 
     drops.forEach(function (d) {
@@ -652,7 +803,7 @@
       p.steps.forEach(function (st) {
         chain = chain.then(function () {
           if (st.set) {
-            Object.keys(st.set).forEach(function (k) { setValue(k, st.set[k]); });
+            Object.keys(st.set).forEach(function (k) { setDirect(k, st.set[k]); });
           } else if (st.stop) {
             st.stop.forEach(function (k) { setTx(k, false); });
           } else if (st.wait) {

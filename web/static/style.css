@@ -236,3 +236,9 @@ h2 small, .sub, .hint { color: var(--muted); font-weight: 400; font-size: 12px; 
 .log tr.k-in td:nth-child(3) { color: var(--warn); }
 .log tr.k-sys td { color: var(--muted); }
 .log tr.k-mark td { background: var(--chip); font-weight: 600; }
+
+/* 현실 주행: 막힌 조작, 안내 문구, 속도 상태 */
+.seg button.blocked { color: var(--muted); text-decoration: line-through; cursor: not-allowed; }
+.drive-msg { color: var(--warn); font-size: 13px; font-weight: 600; min-height: 0; }
+.drive-msg.show { padding: 6px 0 2px; }
+.drive-status { color: var(--muted); font-size: 12px; margin-top: 4px; }

@@ -139,6 +139,8 @@
       </div>
     </div>
 
+    <div id="drive-msg" class="drive-msg" role="status" aria-live="polite"></div>
+
     <div class="ctl" data-signal="ignition_on">
       <div class="ctl-head"><span class="ctl-name">시동</span><button class="tx-btn" data-tx="ignition_on"></button></div>
       <div class="seg" id="ctl-ignition">
@@ -154,8 +156,8 @@
     </div>
 
     <div class="ctl range-ctl" data-signal="vehicle_speed_kph" data-min="0" data-max="250" data-unit="km/h"
-         data-smin="-50" data-smax="300" data-presets="-1,0,1,14,15,20,50,60,250,251">
-      <div class="ctl-head"><span class="ctl-name">속도 <small>유효 0 ~ 250 km/h</small></span><button class="tx-btn" data-tx="vehicle_speed_kph"></button></div>
+         data-smin="0" data-smax="250" data-presets="-1,0,1,14,15,20,50,60,250,251" data-drive="1">
+      <div class="ctl-head"><span class="ctl-name">속도 <small>목표 속도 · 유효 0 ~ 250 km/h</small></span><button class="tx-btn" data-tx="vehicle_speed_kph"></button></div>
     </div>
 
     <div class="ctl range-ctl" data-signal="ambient_light_lux" data-min="0" data-max="60000" data-unit="lux"
