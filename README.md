@@ -1,11 +1,26 @@
-# 차체 편의 기능 제어 SW (VBC: Vehicle Body Control)
+# 가상 차량 Body Control SW 개발 및 검증
 
-가상 차량의 **전조등 · 와이퍼 · 도어 잠금 · 계기판 경고**를 C로 구현하고, 웹 UI에서 입력을 바꿔 가며 요구사항대로 동작하는지 **블랙박스 테스트로 증명**한 팀 프로젝트입니다.
+**차체 편의 기능 · 전조등 · 와이퍼 · 도어 잠금 · 계기판 경고**
+
+가상 차량의 차체 편의 기능을 C로 구현하고, 웹 UI에서 입력을 바꿔 가며 요구사항대로 동작하는지 **블랙박스 테스트로 증명**한 팀 프로젝트입니다.
+
+![웹 UI 시연](docs/demo/VBC_시연.gif)
 
 - 과정: KDT 지능형 모빌리티 엔지니어 · AI Agent 활용 SW 개발/검증 프로젝트 (2026.10)
 - 팀: 5명 (팀장 장태윤)
 - 기준: 고객 요구사항 사양서 VBC-SRS-001 v1.0
 - 개발 도구: C (gcc, make, cppcheck), Python 웹 브리지, Claude Code (AI Agent)
+
+## 팀장 역할 (장태윤)
+
+| 역할 | 한 일 |
+|---|---|
+| 개발 프로세스 총괄 | V-Model 순서(요구사항 → 설계 → 구현 → 테스트)로 일정·산출물·브랜치 규칙을 정하고 진행 |
+| 요구사항 분석 | 분석 양식(템플릿) 설계·정리, 팀과 21개 요구사항 공동 분석, 공통 규칙 C1\~C5 상세 분석 |
+| SW 아키텍처 설계 | 모듈끼리 직접 통신하지 않고 모든 값이 Vehicle Controller를 거치는 구조 설계 (AUTOSAR RTE 방식) |
+| 통합 · 결과 정리 | `develop` 통합, 1차 테스트 결과서 정리 |
+
+SW 구현은 상세설계서를 기준으로 Claude Code(AI Agent)가 작성했고, 팀은 그 결과를 문서와 대조해 검토했습니다.
 
 ## 결과 요약
 
@@ -49,8 +64,8 @@
 필요한 것: Linux 또는 WSL, gcc, Python 3.8 이상 (외부 패키지 없음)
 
 ```bash
-git clone https://github.com/James-Recon40/AI.M_Project.git
-cd AI.M_Project
+git clone https://github.com/James-Recon40/P01_Virtual-Vehicle-Body-Control-SW.git
+cd P01_Virtual-Vehicle-Body-Control-SW
 make            # 헤더 확인 + 컴파일
 make check      # cppcheck 정적 분석
 python3 web/server.py
@@ -100,8 +115,8 @@ main        최종본
    └─ feature/docs · common · vehicle-controller · wiper · lighting · door-lock-cluster · ui
 ```
 
-- 각자 자기 브랜치·자기 폴더만 수정하고, PR로 `develop`에 합쳤습니다 (PR #1\~#14).
-- 구현·통합 PR(#1\~#13)은 작성자가 아닌 팀원이 확인한 뒤 병합했습니다. 마지막 결과 정리 PR(#14)부터는 팀장이 병합했습니다.
+- 각자 자기 브랜치·자기 폴더만 수정하고, PR로 `develop`에 합쳤습니다 (PR #1\~#18).
+- 구현·통합 PR(#1\~#13)은 작성자가 아닌 팀원이 확인한 뒤 병합했습니다. 결과 정리 PR(#14\~#18)은 팀장이 병합했습니다.
 - 팀 규칙은 [`CLAUDE.md`](CLAUDE.md)에 적어 AI Agent도 같은 규칙으로 일하게 했습니다.
 
 ## AI(Claude Code) 활용과 검증
@@ -114,7 +129,7 @@ main        최종본
 
 | 이름 | GitHub | 담당 |
 |---|---|---|
-| 장태윤 (팀장) | [James-Recon40](https://github.com/James-Recon40) | 설계 문서(01\~05), Vehicle Controller · Common 구현, 통합, 테스트 결과 정리 |
+| 장태윤 (팀장) | [James-Recon40](https://github.com/James-Recon40) | 개발 프로세스 총괄, 요구사항 분석, SW 아키텍처 설계, 통합, 테스트 결과 정리 |
 | 이상현 | [charles000303-sketch](https://github.com/charles000303-sketch) | 통합·테스트, 조명 테스트 |
 | 김원 | [rladnjs210-sys](https://github.com/rladnjs210-sys) | 도어 잠금 · 계기판 경고 구현, PR 리뷰, 와이퍼 테스트 |
 | 최희선 | [hseonchoi](https://github.com/hseonchoi) | 와이퍼 · 조명 구현, 도어 테스트 |
@@ -123,8 +138,9 @@ main        최종본
 ## 폴더 구조
 
 ```
-AI.M_Project/
+P01_Virtual-Vehicle-Body-Control-SW/
 ├── docs/
+│   ├── demo/                  웹 UI 시연 GIF
 │   ├── 01_requirements/       요구사항 분석서
 │   ├── 02_architecture/       SW 아키텍처 설계서
 │   ├── 03_interface/          인터페이스 정의서
@@ -144,8 +160,16 @@ AI.M_Project/
 └── CLAUDE.md                  팀·AI 공통 작업 규칙
 ```
 
+## 배운 점
+
+- **요구사항 분석이 전부를 좌우합니다.** 처음 분석이 부족해 프로젝트를 처음부터 다시 시작했습니다.
+- **충돌하는 요구사항은 분석 단계에서 고객과 협의해야 합니다.** 기능 사이의 충돌·불일치를 늦게 찾으면 설계부터 다시 고쳐야 합니다.
+- **AI에게는 명확하게 지시해야 합니다.** 구조와 절차가 불명확하면 요구사항에 없는 기능을 마음대로 만들었습니다.
+- **직접 돌려 봐야 보입니다.** 주행 중 변속, 시동이 꺼진 채 주행 같은 문제는 시연·테스트에서 처음 발견했습니다.
+- **GitHub + Claude Code 협업:** 브랜치 · push · PR 병합 · 통합 흐름을 익혔습니다.
+
 ## 한계
 
 - PC 시뮬레이션 결과이며 실제 차량, CAN 통신, 하드웨어 타이밍은 확인 범위 밖입니다.
 - 선택 기능(R 주행, X 추가 기능)은 구현하지 않았습니다.
-- 시간 관계상 1차 테스트만 수행했습니다.
+- 시간 관계상 1차 블랙박스 테스트만 수행했습니다. 단위·통합 테스트는 다음 과제입니다.
