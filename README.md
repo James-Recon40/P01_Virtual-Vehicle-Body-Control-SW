@@ -18,6 +18,7 @@
 | 개발 프로세스 총괄 | V-Model 순서(요구사항 → 설계 → 구현 → 테스트)로 일정·산출물·브랜치 규칙을 정하고 진행 |
 | 요구사항 분석 | 분석 양식(템플릿) 설계·정리, 팀과 21개 요구사항 공동 분석, 공통 규칙 C1\~C5 상세 분석 |
 | SW 아키텍처 설계 | 모듈끼리 직접 통신하지 않고 모든 값이 Vehicle Controller를 거치는 구조 설계 (AUTOSAR RTE 방식) |
+| 테스트케이스 작성 | 요구사항 21개 → 블랙박스 테스트케이스 42개 직접 설계·작성 (동등분할 · 경계값 · 결정 테이블 · 상태전이) |
 | 통합 · 결과 정리 | `develop` 통합, 1차 테스트 결과서 정리 |
 
 SW 구현은 상세설계서를 기준으로 Claude Code(AI Agent)가 작성했고, 팀은 그 결과를 문서와 대조해 검토했습니다.
@@ -129,7 +130,7 @@ main        최종본
 
 | 이름 | GitHub | 담당 |
 |---|---|---|
-| 장태윤 (팀장) | [James-Recon40](https://github.com/James-Recon40) | 개발 프로세스 총괄, 요구사항 분석, SW 아키텍처 설계, 통합, 테스트 결과 정리 |
+| 장태윤 (팀장) | [James-Recon40](https://github.com/James-Recon40) | 개발 프로세스 총괄, 요구사항 분석, SW 아키텍처 설계, 테스트케이스 작성, 통합, 테스트 결과 정리 |
 | 이상현 | [charles000303-sketch](https://github.com/charles000303-sketch) | 통합·테스트, 조명 테스트 |
 | 김원 | [rladnjs210-sys](https://github.com/rladnjs210-sys) | 도어 잠금 · 계기판 경고 구현, PR 리뷰, 와이퍼 테스트 |
 | 최희선 | [hseonchoi](https://github.com/hseonchoi) | 와이퍼 · 조명 구현, 도어 테스트 |
